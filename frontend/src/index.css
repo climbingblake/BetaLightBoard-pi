@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100 antialiased m-0;
+  }
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer utilities {
+  .hold-cell {
+    @apply rounded cursor-pointer transition-all duration-100 border border-slate-800 select-none;
+  }
+  .hold-cell:hover {
+    @apply brightness-125 border-slate-500;
+  }
+  .hold-cell:active {
+    @apply scale-95;
+  }
+}
