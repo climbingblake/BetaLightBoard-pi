@@ -45,7 +45,7 @@ def _init_strip():
             LED_COUNT,
             brightness=LED_BRIGHTNESS,
             auto_write=False,
-            pixel_order=neopixel.GRB,
+            pixel_order=neopixel.RGB,
         )
         logger.info("adafruit neopixel strip initialized via SPI")
     except Exception as e:
