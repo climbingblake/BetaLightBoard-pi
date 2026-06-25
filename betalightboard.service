@@ -4,8 +4,9 @@ After=network.target
 
 [Service]
 User=root
-WorkingDirectory=/home/blake/betalightboard-pi5
-ExecStart=/usr/local/bin/uvicorn app.main:app --host 0.0.0.0 --port 80 --workers 1
+WorkingDirectory=/home/pi/BetaLightBoard-pi
+ExecStart=/home/pi/BetaLightBoard-pi/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 80 --workers 1
+
 Restart=always
 RestartSec=5
 Environment=LED_SIMULATE=0

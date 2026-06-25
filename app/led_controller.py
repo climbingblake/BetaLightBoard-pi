@@ -14,7 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 LED_COUNT = 250
-LED_PIN = 18        # GPIO18 (PWM)
+LED_PIN = 10        # GPIO10 (SPI0 MOSI) — required for Pi5
 LED_FREQ_HZ = 800000
 LED_DMA = 10
 LED_BRIGHTNESS = 42
