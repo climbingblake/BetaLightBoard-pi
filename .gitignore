@@ -10,9 +10,6 @@ __pycache__/
 *.db
 *.sqlite3
 
-# Built frontend (generated — build from source)
-app/static/
-
 # Environment
 .env
 

@@ -41,6 +41,6 @@ class Setting(Base):
 
 SETTING_DEFAULTS = {
     "NUMB_ROWS": "10",
-    "NUMB_COLS": "10",
+    "NUMB_COLS": "20",
     "BRIGHTNESS": "42",
 }

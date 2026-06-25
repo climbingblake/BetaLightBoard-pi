@@ -14,7 +14,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-LED_COUNT  = 250
+LED_COUNT  = 200
 LED_BRIGHTNESS = 42 / 255  # adafruit uses 0.0-1.0
 
 # Color map: RGB tuples
@@ -53,7 +53,7 @@ def _init_strip():
         SIMULATE = True
 
 
-def address_to_pos(row: int, col: int, num_cols: int = 10) -> int:
+def address_to_pos(row: int, col: int, num_cols: int = 20) -> int:
     """Serpentine LED position. Even rows L→R, odd rows R→L."""
     if row % 2 == 0:
         return col + row * num_cols
@@ -73,7 +73,7 @@ def _show():
         _strip.show()
 
 
-def set_led(row: int, col: int, color: str, num_cols: int = 10):
+def set_led(row: int, col: int, color: str, num_cols: int = 20):
     pos = address_to_pos(row, col, num_cols)
     r, g, b = COLORS.get(color, (0, 0, 0))
     _set_pixel(pos, r, g, b)
