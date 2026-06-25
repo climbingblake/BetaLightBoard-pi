@@ -1,0 +1,23 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Database
+*.db
+*.sqlite3
+
+# Built frontend (generated — build from source)
+app/static/
+
+# Environment
+.env
+
+# macOS
+.DS_Store
+
+# Alembic
+alembic/versions/*.pyc
