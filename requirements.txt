@@ -4,4 +4,5 @@ sqlalchemy>=2.0.0
 alembic>=1.13.0
 pydantic>=2.0.0
 # On Pi5 only — comment out for local dev on Mac:
-# rpi_ws281x>=5.0.0
+# adafruit-circuitpython-neopixel
+# adafruit-blinka

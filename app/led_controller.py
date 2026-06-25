@@ -1,8 +1,9 @@
 """
-LED strip controller for rpi_ws281x (NeoPixel) on Raspberry Pi 5.
+LED strip controller for NeoPixel on Raspberry Pi 5.
 
-On non-Pi hardware (local dev), this module stubs out all hardware calls
-so the rest of the app works normally. Set LED_SIMULATE=1 to force stub mode.
+Uses adafruit-circuitpython-neopixel via SPI (GPIO10) which works reliably
+on Pi5's RP1 GPIO chip. Falls back to simulate mode on non-Pi hardware or
+when LED_SIMULATE=1 is set.
 """
 
 import os
@@ -13,15 +14,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-LED_COUNT = 250
-LED_PIN = 10        # GPIO10 (SPI0 MOSI) — required for Pi5
-LED_FREQ_HZ = 800000
-LED_DMA = 10
-LED_BRIGHTNESS = 42
-LED_INVERT = False
-LED_CHANNEL = 0
+LED_COUNT  = 250
+LED_BRIGHTNESS = 42 / 255  # adafruit uses 0.0-1.0
 
-# Color map — correct RGB values (not the swapped GRB from the old .ino)
+# Color map: RGB tuples
 COLORS: dict[str, tuple[int, int, int]] = {
     "green":     (0, 255, 0),
     "red":       (255, 0, 0),
@@ -38,21 +34,22 @@ SIMULATE = os.getenv("LED_SIMULATE", "0") == "1"
 
 _strip = None
 
+
 def _init_strip():
-    global _strip
-    if _strip is not None:
-        return
+    global _strip, SIMULATE
     try:
-        from rpi_ws281x import PixelStrip, Color as WS_Color
-        _strip = PixelStrip(
-            LED_COUNT, LED_PIN, LED_FREQ_HZ,
-            LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL
+        import board
+        import neopixel
+        _strip = neopixel.NeoPixel(
+            board.MOSI,
+            LED_COUNT,
+            brightness=LED_BRIGHTNESS,
+            auto_write=False,
+            pixel_order=neopixel.GRB,
         )
-        _strip.begin()
-        logger.info("rpi_ws281x strip initialized")
+        logger.info("adafruit neopixel strip initialized via SPI")
     except Exception as e:
-        logger.warning(f"rpi_ws281x not available ({e}), running in simulate mode")
-        global SIMULATE
+        logger.warning(f"neopixel not available ({e}), running in simulate mode")
         SIMULATE = True
 
 
@@ -68,8 +65,7 @@ def _set_pixel(pos: int, r: int, g: int, b: int):
     if SIMULATE:
         logger.debug(f"[sim] pixel {pos} = rgb({r},{g},{b})")
         return
-    from rpi_ws281x import Color as WS_Color
-    _strip.setPixelColor(pos, WS_Color(r, g, b))
+    _strip[pos] = (r, g, b)
 
 
 def _show():
@@ -85,15 +81,17 @@ def set_led(row: int, col: int, color: str, num_cols: int = 10):
 
 
 def set_brightness(level: int):
+    """level is 0-255 (from old API); convert to 0.0-1.0 for adafruit."""
     if not SIMULATE:
-        _strip.setBrightness(max(0, min(255, level)))
+        _strip.brightness = max(0, min(255, level)) / 255
         _strip.show()
 
 
 def all_off():
-    for i in range(LED_COUNT):
-        _set_pixel(i, 0, 0, 0)
-    _show()
+    if SIMULATE:
+        return
+    _strip.fill((0, 0, 0))
+    _strip.show()
 
 
 # ---------------------------------------------------------------------------
@@ -131,8 +129,6 @@ class AnimationController:
             logger.warning(f"Unknown routine: {name}")
             return
         fn()
-
-    # -- routines --
 
     def _rainbow(self):
         step = 0
