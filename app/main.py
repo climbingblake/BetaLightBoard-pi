@@ -8,7 +8,7 @@ import logging
 
 from app.database import engine, SessionLocal
 from app.models import Base, Setting, SETTING_DEFAULTS
-from app.routers import problems, leds, routines, settings
+from app.routers import problems, leds, routines, settings, system
 from app import led_controller
 
 logging.basicConfig(level=logging.INFO)
@@ -50,6 +50,7 @@ app.include_router(problems.router)
 app.include_router(leds.router)
 app.include_router(routines.router)
 app.include_router(settings.router)
+app.include_router(system.router)
 
 # Serve the built React frontend — only mount if the build exists
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")

@@ -7,12 +7,18 @@ export default function Settings() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [updateMsg, setUpdateMsg] = useState("");
+  const [commit, setCommit] = useState("");
 
   useEffect(() => {
     api.settings.list().then((s) => {
       setSettings(s);
       setValues(Object.fromEntries(s.map((x) => [x.key, x.value ?? ""])));
     });
+    fetch("/api/system/version")
+      .then((r) => r.json())
+      .then((d) => setCommit(d.commit));
   }, []);
 
   async function handleSave(e: React.FormEvent) {
@@ -24,6 +30,21 @@ export default function Settings() {
     setTimeout(() => setSaved(false), 2000);
   }
 
+  async function handleUpdate() {
+    if (!confirm("Pull latest code and restart the service?")) return;
+    setUpdating(true);
+    setUpdateMsg("Pulling… service will restart in a moment.");
+    try {
+      const res = await fetch("/api/system/update", { method: "POST" });
+      const data = await res.json();
+      setUpdateMsg(data.message + " Page will reload in 8s.");
+      setTimeout(() => window.location.reload(), 8000);
+    } catch {
+      setUpdateMsg("Update triggered — reloading in 8s.");
+      setTimeout(() => window.location.reload(), 8000);
+    }
+  }
+
   const LABELS: Record<string, string> = {
     NUMB_ROWS: "Number of rows",
     NUMB_COLS: "Number of columns",
@@ -33,7 +54,8 @@ export default function Settings() {
   return (
     <div className="max-w-md mx-auto p-6 mt-8">
       <h1 className="text-2xl font-semibold text-slate-100 mb-6">Settings</h1>
-      <form onSubmit={handleSave} className="flex flex-col gap-4">
+
+      <form onSubmit={handleSave} className="flex flex-col gap-4 mb-10">
         {settings.map((s) => (
           <div key={s.key}>
             <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">
@@ -58,6 +80,25 @@ export default function Settings() {
           {saved && <span className="text-green-500 text-sm">Saved.</span>}
         </div>
       </form>
+
+      <hr className="border-slate-800 mb-8" />
+
+      <div>
+        <h2 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-4">System</h2>
+        {commit && (
+          <p className="text-xs text-slate-600 mb-4">Current commit: <code className="text-slate-500">{commit}</code></p>
+        )}
+        <button
+          onClick={handleUpdate}
+          disabled={updating}
+          className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm font-medium transition-colors disabled:opacity-50"
+        >
+          {updating ? "Updating…" : "Pull & Restart"}
+        </button>
+        {updateMsg && (
+          <p className="text-xs text-yellow-500 mt-3">{updateMsg}</p>
+        )}
+      </div>
     </div>
   );
 }
