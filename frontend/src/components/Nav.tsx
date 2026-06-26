@@ -5,6 +5,7 @@ export function Nav() {
 
   const links = [
     { to: "/",          label: "Problems" },
+    { to: "/routes",    label: "Routes" },
     { to: "/generate",  label: "Random" },
     { to: "/routines",  label: "Routines" },
     { to: "/settings",  label: "Settings" },
@@ -20,7 +21,7 @@ export function Nav() {
           key={to}
           to={to}
           className={`px-3 py-1.5 rounded text-sm transition-colors ${
-            pathname === to
+            pathname === to || (to !== "/" && pathname.startsWith(to))
               ? "bg-slate-800 text-white"
               : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
           }`}

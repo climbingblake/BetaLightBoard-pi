@@ -6,6 +6,9 @@ import NewProblem from "@/pages/NewProblem";
 import Generate from "@/pages/Generate";
 import Routines from "@/pages/Routines";
 import Settings from "@/pages/Settings";
+import RouteList from "@/pages/RouteList";
+import RouteShow from "@/pages/RouteShow";
+import RouteEditor from "@/pages/RouteEditor";
 
 export default function App() {
   return (
@@ -14,12 +17,15 @@ export default function App() {
         <Nav />
         <main className="flex-1">
           <Routes>
-            <Route path="/"                  element={<ProblemList />} />
-            <Route path="/problems/new"      element={<NewProblem />} />
-            <Route path="/problems/:id"      element={<ProblemEditor />} />
-            <Route path="/generate"          element={<Generate />} />
-            <Route path="/routines"          element={<Routines />} />
-            <Route path="/settings"          element={<Settings />} />
+            <Route path="/"                    element={<ProblemList />} />
+            <Route path="/problems/new"        element={<NewProblem />} />
+            <Route path="/problems/:id"        element={<ProblemEditor />} />
+            <Route path="/generate"            element={<Generate />} />
+            <Route path="/routines"            element={<Routines />} />
+            <Route path="/settings"            element={<Settings />} />
+            <Route path="/routes"              element={<RouteList />} />
+            <Route path="/routes/:id"          element={<RouteShow />} />
+            <Route path="/routes/:id/edit"     element={<RouteEditor />} />
           </Routes>
         </main>
       </div>

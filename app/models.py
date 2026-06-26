@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Integer, String, Text, ForeignKey, DateTime
+from sqlalchemy import Integer, String, Text, Float, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -37,6 +37,35 @@ class Setting(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     value: Mapped[str | None] = mapped_column(String(255))
+
+
+class Route(Base):
+    __tablename__ = "routes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    description: Mapped[str | None] = mapped_column(Text)
+    duration: Mapped[float] = mapped_column(Float, nullable=False, default=3.0)
+    number_shown: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    repeat: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    holds: Mapped[list["RouteHold"]] = relationship(
+        "RouteHold", back_populates="route", cascade="all, delete-orphan",
+        order_by="RouteHold.sequence",
+    )
+
+
+class RouteHold(Base):
+    __tablename__ = "route_holds"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    route_id: Mapped[int] = mapped_column(Integer, ForeignKey("routes.id"), nullable=False)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    row: Mapped[int] = mapped_column(Integer, nullable=False)
+    col: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    route: Mapped["Route"] = relationship("Route", back_populates="holds")
 
 
 SETTING_DEFAULTS = {

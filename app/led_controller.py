@@ -181,8 +181,123 @@ def _wheel(pos: int) -> tuple[int, int, int]:
     return (pos * 3, 255 - pos * 3, 0)
 
 
-# Module-level singleton
+# ---------------------------------------------------------------------------
+# Route animation controller
+# ---------------------------------------------------------------------------
+
+def _hue_to_rgb(hue: float, brightness: float = 1.0) -> tuple[int, int, int]:
+    """
+    Convert hue (0.0-1.0) + brightness (0.0-1.0) to RGB.
+    Full saturation, so this gives vivid colors.
+    """
+    import colorsys
+    r, g, b = colorsys.hsv_to_rgb(hue, 1.0, brightness)
+    return (int(r * 255), int(g * 255), int(b * 255))
+
+
+# Orange ≈ hue 0.08, Violet ≈ hue 0.75
+_ROUTE_HUE_WARM = 0.08
+_ROUTE_HUE_COOL = 0.75
+
+
+class RouteAnimationController:
+    """
+    Plays a route: an ordered list of (row, col) holds.
+
+    Each hold is "on" for `duration` seconds, transitioning hue from orange
+    (warm, just activated) to violet (cool, about to go dark).
+    New holds start every `duration / number_shown` seconds so that
+    `number_shown` LEDs are visible simultaneously at steady state.
+    """
+
+    def __init__(self):
+        self._thread: threading.Thread | None = None
+        self._stop: threading.Event = threading.Event()
+        self.current_route_id: int | None = None
+        self.current_index: int = 0
+        self.total: int = 0
+        self.playing: bool = False
+
+    def play(self, holds: list[tuple[int, int]], duration: float, number_shown: int,
+             repeat: bool, num_cols: int = 20):
+        self.stop()
+        self._stop.clear()
+        self.current_index = 0
+        self.total = len(holds)
+        self.playing = True
+        self._thread = threading.Thread(
+            target=self._run,
+            args=(holds, duration, number_shown, repeat, num_cols),
+            daemon=True,
+        )
+        self._thread.start()
+
+    def stop(self):
+        self._stop.set()
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=2.0)
+        self.playing = False
+        self.current_index = 0
+        all_off()
+
+    def _run(self, holds: list[tuple[int, int]], duration: float,
+             number_shown: int, repeat: bool, num_cols: int):
+        stagger = duration / max(number_shown, 1)
+        tick = 0.05  # update interval in seconds
+
+        try:
+            while True:
+                # active_holds: list of (row, col, start_time)
+                active: list[tuple[int, int, float]] = []
+                hold_idx = 0
+                next_hold_t = 0.0
+                t = 0.0
+
+                while not self._stop.is_set():
+                    # Activate next hold when it's time
+                    if hold_idx < len(holds) and t >= next_hold_t:
+                        active.append((holds[hold_idx][0], holds[hold_idx][1], t))
+                        self.current_index = hold_idx
+                        hold_idx += 1
+                        next_hold_t = hold_idx * stagger
+
+                    # Remove expired holds
+                    active = [(r, c, st) for r, c, st in active if (t - st) < duration]
+
+                    # Render all active holds
+                    if not SIMULATE and _strip is not None:
+                        _strip.fill((0, 0, 0))
+
+                    for r, c, start_t in active:
+                        age = t - start_t          # 0 → duration
+                        progress = age / duration  # 0.0 (warm) → 1.0 (cool)
+                        hue = _ROUTE_HUE_WARM + progress * (_ROUTE_HUE_COOL - _ROUTE_HUE_WARM)
+                        brightness = 1.0 - (progress ** 1.5)  # non-linear fade
+                        rgb = _hue_to_rgb(hue, brightness)
+                        pos = address_to_pos(r, c, num_cols)
+                        _set_pixel(pos, *rgb)
+
+                    _show()
+
+                    # Done when all holds activated and all have expired
+                    last_hold_end = (len(holds) - 1) * stagger + duration
+                    if hold_idx >= len(holds) and t >= last_hold_end:
+                        break
+
+                    time.sleep(tick)
+                    t += tick
+
+                if self._stop.is_set() or not repeat:
+                    break
+
+        finally:
+            self.playing = False
+            all_off()
+
+
+# Module-level singletons
 animation = AnimationController()
+route_animation = RouteAnimationController()
 
 
 def startup():

@@ -8,7 +8,7 @@ import logging
 
 from app.database import engine, SessionLocal
 from app.models import Base, Setting, SETTING_DEFAULTS
-from app.routers import problems, leds, routines, settings, system
+from app.routers import problems, leds, routines, settings, system, routes
 from app import led_controller
 
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +34,7 @@ async def lifespan(app: FastAPI):
     logger.info("LED controller started")
     yield
     led_controller.animation.stop()
+    led_controller.route_animation.stop()
     logger.info("LED controller stopped")
 
 
@@ -51,6 +52,7 @@ app.include_router(leds.router)
 app.include_router(routines.router)
 app.include_router(settings.router)
 app.include_router(system.router)
+app.include_router(routes.router)
 
 # Serve the built React frontend — only mount if the build exists
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")

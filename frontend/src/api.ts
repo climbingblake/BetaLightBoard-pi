@@ -38,6 +38,24 @@ export interface Setting {
   value: string | null;
 }
 
+export interface RouteHold {
+  id: number;
+  sequence: number;
+  row: number;
+  col: number;
+}
+
+export interface Route {
+  id: number;
+  name: string;
+  description: string | null;
+  duration: number;
+  number_shown: number;
+  repeat: boolean;
+  created_at: string;
+  holds: RouteHold[];
+}
+
 // ---- Problems ----
 
 export const api = {
@@ -83,5 +101,23 @@ export const api = {
     list:   ()                          => req<Setting[]>("GET", "/settings"),
     update: (values: Record<string, string>) =>
       req<Setting[]>("PUT", "/settings", { values }),
+  },
+
+  routes: {
+    list:   ()                => req<Route[]>("GET", "/routes"),
+    get:    (id: number)      => req<Route>("GET", `/routes/${id}`),
+    create: (body: Partial<Route>) => req<Route>("POST", "/routes", body),
+    update: (id: number, body: Partial<Route>) => req<Route>("PUT", `/routes/${id}`, body),
+    delete: (id: number)      => req<void>("DELETE", `/routes/${id}`),
+    addHold:      (id: number, row: number, col: number) =>
+      req<RouteHold>("POST", `/routes/${id}/holds`, { row, col }),
+    removeLastHold: (id: number) => req<void>("DELETE", `/routes/${id}/holds/last`),
+    preview: (id: number, row: number, col: number) =>
+      req<void>("POST", `/routes/${id}/preview`, { row, col }),
+    play:   (id: number, repeat: boolean) =>
+      req<void>("POST", `/routes/${id}/play?repeat=${repeat}`),
+    stop:   (id: number)      => req<void>("POST", `/routes/${id}/stop`),
+    status: (id: number)      =>
+      req<{ playing: boolean; current_index: number; total: number }>("GET", `/routes/${id}/status`),
   },
 };
