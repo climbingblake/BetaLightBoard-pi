@@ -1,7 +1,21 @@
 from datetime import datetime
-from sqlalchemy import Integer, String, Text, Float, Boolean, ForeignKey, DateTime
+from sqlalchemy import Integer, String, Text, Float, Boolean, ForeignKey, DateTime, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    attempts: Mapped[list["Attempt"]] = relationship("Attempt", back_populates="user", cascade="all, delete-orphan")
+    sends: Mapped[list["Send"]] = relationship("Send", back_populates="user", cascade="all, delete-orphan")
+    favorites: Mapped[list["Favorite"]] = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
 
 
 class Problem(Base):
@@ -73,3 +87,65 @@ SETTING_DEFAULTS = {
     "NUMB_COLS": "20",
     "BRIGHTNESS": "42",
 }
+
+
+class Attempt(Base):
+    __tablename__ = "attempts"
+    __table_args__ = (
+        CheckConstraint(
+            "(problem_id IS NULL) != (route_id IS NULL)",
+            name="attempt_one_target",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    problem_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("problems.id"), nullable=True)
+    route_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("routes.id"), nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    user: Mapped["User"] = relationship("User", back_populates="attempts")
+    problem: Mapped["Problem | None"] = relationship("Problem")
+    route: Mapped["Route | None"] = relationship("Route")
+
+
+class Send(Base):
+    __tablename__ = "sends"
+    __table_args__ = (
+        CheckConstraint(
+            "(problem_id IS NULL) != (route_id IS NULL)",
+            name="send_one_target",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    problem_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("problems.id"), nullable=True)
+    route_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("routes.id"), nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    user: Mapped["User"] = relationship("User", back_populates="sends")
+    problem: Mapped["Problem | None"] = relationship("Problem")
+    route: Mapped["Route | None"] = relationship("Route")
+
+
+class Favorite(Base):
+    __tablename__ = "favorites"
+    __table_args__ = (
+        CheckConstraint(
+            "(problem_id IS NULL) != (route_id IS NULL)",
+            name="favorite_one_target",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    problem_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("problems.id"), nullable=True)
+    route_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("routes.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship("User", back_populates="favorites")
+    problem: Mapped["Problem | None"] = relationship("Problem")
+    route: Mapped["Route | None"] = relationship("Route")
