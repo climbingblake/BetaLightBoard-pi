@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "@/api";
 import type { Route, RouteHold } from "@/api";
+import { ActivityPanel } from "@/components/ActivityPanel";
 
 // Violet → Orange gradient across all holds (first = violet, last = orange)
 function holdColor(index: number, total: number): string {
@@ -216,6 +217,8 @@ export default function RouteShow() {
             ← Back
           </button>
         </div>
+
+        <ActivityPanel routeId={route.id} />
       </div>
     </div>
   );

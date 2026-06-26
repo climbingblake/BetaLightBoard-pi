@@ -9,7 +9,7 @@ from app.auth import get_current_user
 from app.database import get_db
 from app.models import Favorite, User
 
-router = APIRouter(prefix="/favorites", tags=["favorites"])
+router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
 
 class FavoriteCreate(BaseModel):

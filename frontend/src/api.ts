@@ -4,6 +4,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: body ? { "Content-Type": "application/json" } : {},
+    credentials: "include",
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
@@ -15,6 +16,38 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 }
 
 // ---- Types ----
+
+export interface User {
+  id: number;
+  username: string;
+  is_admin: boolean;
+}
+
+export interface Attempt {
+  id: number;
+  user_id: number;
+  problem_id: number | null;
+  route_id: number | null;
+  timestamp: string;
+  notes: string | null;
+}
+
+export interface Send {
+  id: number;
+  user_id: number;
+  problem_id: number | null;
+  route_id: number | null;
+  timestamp: string;
+  notes: string | null;
+}
+
+export interface Favorite {
+  id: number;
+  user_id: number;
+  problem_id: number | null;
+  route_id: number | null;
+  created_at: string;
+}
 
 export interface Led {
   id: number;
@@ -101,6 +134,49 @@ export const api = {
     list:   ()                          => req<Setting[]>("GET", "/settings"),
     update: (values: Record<string, string>) =>
       req<Setting[]>("PUT", "/settings", { values }),
+  },
+
+  auth: {
+    me:       ()                                      => req<User>("GET", "/auth/me"),
+    login:    (username: string, password: string)    => req<User>("POST", "/auth/login", { username, password }),
+    logout:   ()                                      => req<void>("POST", "/auth/logout"),
+    register: (username: string, password: string)    => req<User>("POST", "/auth/register", { username, password }),
+    listUsers: ()                                     => req<User[]>("GET", "/auth/users"),
+    deleteUser: (id: number)                          => req<void>("DELETE", `/auth/users/${id}`),
+  },
+
+  attempts: {
+    list:  (params: { problem_id?: number; route_id?: number }) => {
+      const qs = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]))
+      ).toString();
+      return req<Attempt[]>("GET", `/attempts${qs ? "?" + qs : ""}`);
+    },
+    log:   (body: { problem_id?: number; route_id?: number; notes?: string }) => req<Attempt>("POST", "/attempts", body),
+    clear: (params: { problem_id?: number; route_id?: number }) => {
+      const qs = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]))
+      ).toString();
+      return req<void>("DELETE", `/attempts${qs ? "?" + qs : ""}`);
+    },
+  },
+
+  sends: {
+    list:   (params: { problem_id?: number; route_id?: number }) => {
+      const qs = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]))
+      ).toString();
+      return req<Send[]>("GET", `/sends${qs ? "?" + qs : ""}`);
+    },
+    log:    (body: { problem_id?: number; route_id?: number; notes?: string }) => req<Send>("POST", "/sends", body),
+    delete: (id: number) => req<void>("DELETE", `/sends/${id}`),
+  },
+
+  favorites: {
+    list:   (type?: "problem" | "route") =>
+      req<Favorite[]>("GET", `/favorites${type ? "?type=" + type : ""}`),
+    add:    (body: { problem_id?: number; route_id?: number }) => req<Favorite>("POST", "/favorites", body),
+    remove: (id: number) => req<void>("DELETE", `/favorites/${id}`),
   },
 
   routes: {

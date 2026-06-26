@@ -9,7 +9,7 @@ from app.auth import get_current_user
 from app.database import get_db
 from app.models import Send, User
 
-router = APIRouter(prefix="/sends", tags=["sends"])
+router = APIRouter(prefix="/api/sends", tags=["sends"])
 
 
 class SendCreate(BaseModel):

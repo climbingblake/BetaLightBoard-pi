@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
-from app.auth import create_access_token, get_current_user, hash_password, verify_password
+from app.auth import create_access_token, get_admin_user, get_current_user, hash_password, verify_password
 from app.database import get_db
 from app.models import User
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 class RegisterRequest(BaseModel):
@@ -78,3 +78,19 @@ def logout(response: Response):
 @router.get("/me", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.get("/users", response_model=list[UserOut])
+def list_users(db: Session = Depends(get_db), _: User = Depends(get_admin_user)):
+    return db.query(User).order_by(User.created_at).all()
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_admin_user)):
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(user)
+    db.commit()

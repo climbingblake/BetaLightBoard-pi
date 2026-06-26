@@ -5,6 +5,7 @@ import { BoardGrid } from "@/components/BoardGrid";
 import { ColorPicker } from "@/components/ColorPicker";
 import { api } from "@/api";
 import type { Led } from "@/api";
+import { ActivityPanel } from "@/components/ActivityPanel";
 
 const GRADES = ["V0","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","V11","V12"];
 
@@ -196,6 +197,8 @@ export default function ProblemEditor() {
         {status && (
           <p className="text-xs text-green-500 text-center">{status}</p>
         )}
+
+        <ActivityPanel problemId={current.id} />
       </div>
     </div>
   );

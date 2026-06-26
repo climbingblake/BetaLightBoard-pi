@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { api } from "@/api";
-import type { Setting } from "@/api";
+import type { Setting, User } from "@/api";
+import { useAuth } from "@/store/useAuth";
 
 export default function Settings() {
+  const { user: currentUser } = useAuth();
   const [settings, setSettings] = useState<Setting[]>([]);
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -10,6 +12,14 @@ export default function Settings() {
   const [updating, setUpdating] = useState(false);
   const [updateMsg, setUpdateMsg] = useState("");
   const [commit, setCommit] = useState("");
+
+  // User management (admin only)
+  const [users, setUsers] = useState<User[]>([]);
+  const [newUsername, setNewUsername] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newIsAdmin, setNewIsAdmin] = useState(false);
+  const [userError, setUserError] = useState("");
+  const [userSaving, setUserSaving] = useState(false);
 
   useEffect(() => {
     api.settings.list().then((s) => {
@@ -19,7 +29,11 @@ export default function Settings() {
     fetch("/api/system/version")
       .then((r) => r.json())
       .then((d) => setCommit(d.commit));
-  }, []);
+
+    if (currentUser?.is_admin) {
+      api.auth.listUsers().then(setUsers);
+    }
+  }, [currentUser]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -43,6 +57,34 @@ export default function Settings() {
       setUpdateMsg("Update triggered — reloading in 8s.");
       setTimeout(() => window.location.reload(), 8000);
     }
+  }
+
+  async function handleCreateUser(e: React.FormEvent) {
+    e.preventDefault();
+    setUserError("");
+    setUserSaving(true);
+    try {
+      await api.auth.register(newUsername, newPassword);
+      if (newIsAdmin) {
+        // fetch the new user list to get the id, then we'd need a set-admin endpoint
+        // for now just refresh the list
+      }
+      const updated = await api.auth.listUsers();
+      setUsers(updated);
+      setNewUsername("");
+      setNewPassword("");
+      setNewIsAdmin(false);
+    } catch (err) {
+      setUserError(err instanceof Error ? err.message : "Failed to create user");
+    } finally {
+      setUserSaving(false);
+    }
+  }
+
+  async function handleDeleteUser(id: number) {
+    if (!confirm("Delete this user and all their activity data?")) return;
+    await api.auth.deleteUser(id);
+    setUsers((u) => u.filter((x) => x.id !== id));
   }
 
   const LABELS: Record<string, string> = {
@@ -82,6 +124,72 @@ export default function Settings() {
       </form>
 
       <hr className="border-slate-800 mb-8" />
+
+      {/* User Management — admin only */}
+      {currentUser?.is_admin && (
+        <>
+          <div className="mb-8">
+            <h2 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-4">Users</h2>
+
+            <div className="flex flex-col gap-2 mb-6">
+              {users.map((u) => (
+                <div
+                  key={u.id}
+                  className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded px-3 py-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-200 text-sm">{u.username}</span>
+                    {u.is_admin && (
+                      <span className="text-xs bg-blue-900/50 text-blue-400 px-1.5 py-0.5 rounded">admin</span>
+                    )}
+                    {u.id === currentUser.id && (
+                      <span className="text-xs text-slate-600">(you)</span>
+                    )}
+                  </div>
+                  {u.id !== currentUser.id && (
+                    <button
+                      onClick={() => handleDeleteUser(u.id)}
+                      className="text-slate-600 hover:text-red-400 text-xs transition-colors"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <form onSubmit={handleCreateUser} className="flex flex-col gap-3">
+              <p className="text-xs text-slate-500 uppercase tracking-wider">Add user</p>
+              <input
+                type="text"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                placeholder="Username"
+                required
+                className="bg-slate-900 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm"
+              />
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Password"
+                required
+                className="bg-slate-900 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm"
+              />
+              {userError && <p className="text-red-400 text-xs">{userError}</p>}
+              <button
+                type="submit"
+                disabled={userSaving}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {userSaving ? "Creating…" : "Create user"}
+              </button>
+            </form>
+          </div>
+
+          <hr className="border-slate-800 mb-8" />
+        </>
+      )}
 
       <div>
         <h2 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-4">System</h2>

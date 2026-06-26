@@ -9,7 +9,7 @@ from app.auth import get_current_user
 from app.database import get_db
 from app.models import Attempt, User
 
-router = APIRouter(prefix="/attempts", tags=["attempts"])
+router = APIRouter(prefix="/api/attempts", tags=["attempts"])
 
 
 class AttemptCreate(BaseModel):
