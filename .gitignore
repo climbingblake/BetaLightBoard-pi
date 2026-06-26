@@ -19,3 +19,4 @@ __pycache__/
 # Alembic
 alembic/versions/*.pyc
 betalightboard.db
+betalightboard.db-journal
