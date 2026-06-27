@@ -51,7 +51,7 @@ export default function Generate() {
         )}
       </div>
 
-      <div className="w-64 border-l border-slate-800 bg-slate-900 flex flex-col gap-5 p-5">
+      <div className="w-64 border-l border-slate-800 bg-slate-900 hidden md:flex flex-col gap-5 p-5">
         <h2 className="text-slate-100 font-semibold">Random Generator</h2>
 
         <div>
