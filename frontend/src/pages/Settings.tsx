@@ -11,6 +11,7 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [updateMsg, setUpdateMsg] = useState("");
+  const [updateStatus, setUpdateStatus] = useState<"idle" | "ok" | "error">("idle");
   const [commit, setCommit] = useState("");
 
   // User management (admin only)
@@ -47,15 +48,24 @@ export default function Settings() {
   async function handleUpdate() {
     if (!confirm("Pull latest code and restart the service?")) return;
     setUpdating(true);
-    setUpdateMsg("Pulling… service will restart in a moment.");
+    setUpdateStatus("idle");
+    setUpdateMsg("Fetching latest code…");
     try {
       const res = await fetch("/api/system/update", { method: "POST" });
       const data = await res.json();
-      setUpdateMsg(data.message + " Page will reload in 8s.");
-      setTimeout(() => window.location.reload(), 8000);
+      if (data.status === "ok") {
+        setUpdateStatus("ok");
+        setUpdateMsg(data.message + " Page will reload in 8s.");
+        setTimeout(() => window.location.reload(), 8000);
+      } else {
+        setUpdateStatus("error");
+        setUpdateMsg(data.message || "Update failed.");
+        setUpdating(false);
+      }
     } catch {
-      setUpdateMsg("Update triggered — reloading in 8s.");
-      setTimeout(() => window.location.reload(), 8000);
+      setUpdateStatus("error");
+      setUpdateMsg("Could not reach the server. Check the Pi.");
+      setUpdating(false);
     }
   }
 
@@ -204,7 +214,11 @@ export default function Settings() {
           {updating ? "Updating…" : "Pull & Restart"}
         </button>
         {updateMsg && (
-          <p className="text-xs text-yellow-500 mt-3">{updateMsg}</p>
+          <p className={`text-xs mt-3 ${
+            updateStatus === "ok" ? "text-green-500" :
+            updateStatus === "error" ? "text-red-400" :
+            "text-yellow-500"
+          }`}>{updateMsg}</p>
         )}
       </div>
     </div>
