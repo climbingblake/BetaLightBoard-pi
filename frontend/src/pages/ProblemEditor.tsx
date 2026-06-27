@@ -97,7 +97,7 @@ export default function ProblemEditor() {
       </div>
 
       {/* Sidebar */}
-      <div className="w-64 border-l border-slate-800 bg-slate-900 hidden md:flex flex-col gap-5 p-5 overflow-y-auto">
+      <div className="w-64 border-l border-slate-800 bg-slate-900 hidden lg:flex flex-col gap-5 p-5 overflow-y-auto">
         {/* Problem meta */}
         <div>
           {editing ? (
