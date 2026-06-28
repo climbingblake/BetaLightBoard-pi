@@ -251,7 +251,7 @@ export default function ProblemEditor() {
         <ActivityPanel problemId={current.id} onActivity={() => fetchProblem(current.id)} />
 
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/problems")}
           className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-sm transition-colors"
         >
           ← Back

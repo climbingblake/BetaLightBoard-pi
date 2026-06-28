@@ -150,9 +150,27 @@ export interface WorkoutSession {
   items: SessionItem[];
 }
 
+export interface DashboardData {
+  totals: { problems: number; routes: number; sessions: number; sends: number; attempts: number; climbers: number };
+  new_last_7: { problems: number; routes: number; sessions: number; sends: number };
+  sparklines: { problems: number[]; routes: number[]; sessions: number[]; sends: number[] };
+  grade_distribution: { grade: string; count: number }[];
+  grade_summary: { total: number; most_common: string | null; hardest: string | null };
+  sends_over_time: { week: string; problems: number; routes: number; total: number }[];
+  send_rate_overall: number | null;
+  top_problems: { id: number; name: string; grade: string | null; setter: string | null; rating_avg: number | null; rating_count: number; ascents: number }[];
+  recent_activity: { kind: "send" | "attempt"; target: "problem" | "route"; name: string; who: string; when: string | null }[];
+  me: { sends: number; attempts: number; send_rate: number | null; favorites: number };
+  leaderboard: { username: string; sends: number }[];
+}
+
 // ---- Problems ----
 
 export const api = {
+  dashboard: {
+    get: () => req<DashboardData>("GET", "/dashboard"),
+  },
+
   problems: {
     list: (params?: { grade?: string; setter?: string; sort?: SortKey }) => {
       const filtered = Object.fromEntries(

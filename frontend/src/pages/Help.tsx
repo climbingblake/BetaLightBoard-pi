@@ -20,7 +20,8 @@ function Steps({ items }: { items: React.ReactNode[] }) {
 }
 
 const TABS: { to: string; label: string; desc: string }[] = [
-  { to: "/", label: "Problems", desc: "Boulder problems shown as lit holds. Browse, set, and log your climbs." },
+  { to: "/", label: "Dashboard", desc: "At-a-glance stats: totals, grade spread, sends over time, and recent activity." },
+  { to: "/problems", label: "Problems", desc: "Boulder problems shown as lit holds. Browse, set, and log your climbs." },
   { to: "/routes", label: "Routes", desc: "Timed hold-by-hold sequences that play across the board." },
   { to: "/sessions", label: "Sessions", desc: "Ordered workouts that string problems and routes together." },
   { to: "/generate", label: "Random", desc: "Auto-generate a fresh problem with a few sliders." },

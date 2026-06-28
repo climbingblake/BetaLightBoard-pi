@@ -10,7 +10,7 @@ from sqlalchemy import inspect, text
 
 from app.database import engine, SessionLocal
 from app.models import Base, Setting, SETTING_DEFAULTS, Attempt, Send, Favorite, User
-from app.routers import problems, leds, routines, settings, system, routes, auth, attempts, sends, favorites, ratings, sessions, backup
+from app.routers import problems, leds, routines, settings, system, routes, auth, attempts, sends, favorites, ratings, sessions, backup, dashboard
 from app import led_controller
 
 logging.basicConfig(level=logging.INFO)
@@ -168,6 +168,7 @@ app.include_router(favorites.router)
 app.include_router(ratings.router)
 app.include_router(sessions.router)
 app.include_router(backup.router)
+app.include_router(dashboard.router)
 
 # Serve the built React frontend — only mount if the build exists
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")

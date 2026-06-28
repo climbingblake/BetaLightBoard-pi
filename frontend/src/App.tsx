@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Nav } from "@/components/Nav";
+import Dashboard from "@/pages/Dashboard";
 import ProblemList from "@/pages/ProblemList";
 import ProblemEditor from "@/pages/ProblemEditor";
 import NewProblem from "@/pages/NewProblem";
@@ -39,7 +40,8 @@ function AppShell() {
       <Nav />
       <main className="flex-1">
         <Routes>
-          <Route path="/"                element={<ProblemList />} />
+          <Route path="/"                element={<Dashboard />} />
+          <Route path="/problems"        element={<ProblemList />} />
           <Route path="/problems/new"    element={<NewProblem />} />
           <Route path="/problems/:id"    element={<ProblemEditor />} />
           <Route path="/generate"        element={<Generate />} />

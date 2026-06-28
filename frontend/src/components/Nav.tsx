@@ -6,7 +6,8 @@ export function Nav() {
   const { user, logout } = useAuth();
 
   const links = [
-    { to: "/",         label: "Problems" },
+    { to: "/",         label: "Dashboard" },
+    { to: "/problems", label: "Problems" },
     { to: "/routes",   label: "Routes" },
     { to: "/sessions", label: "Sessions" },
     { to: "/generate", label: "Random" },

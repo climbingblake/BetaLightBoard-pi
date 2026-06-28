@@ -73,7 +73,7 @@ export default function NewProblem() {
           </button>
           <button
             type="button"
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/problems")}
             className="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm"
           >
             Cancel
