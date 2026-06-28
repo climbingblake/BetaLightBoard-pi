@@ -169,8 +169,8 @@ def _build_random_problem(num_rows: int, num_cols: int, hands: int, feet: int) -
                 holds.append(place(start_row, c2, "green"))
                 break
 
-    # --- finish: top or second row ---
-    finish_row = min(rnd.choice([0, 1]), start_row - 1)
+    # --- finish: top row 90% of the time, second row otherwise ---
+    finish_row = min(0 if rnd.random() < 0.9 else 1, start_row - 1)
     span = start_row - finish_row  # rows to climb (> 0)
 
     # Honor the requested count, but guarantee the top is reachable in <=REACH steps.
@@ -217,11 +217,25 @@ def _build_random_problem(num_rows: int, num_cols: int, hands: int, feet: int) -
         holds.append(place(new_row, new_col, "red" if is_finish else "blue"))
         prev_row, prev_col = new_row, new_col
 
-    # --- feet: below the lower hand holds, wide variance, fewer than hands ---
+    # --- feet: fewer than hands, with one guaranteed below the start ---
+    start_cols = [h.col for h in holds if h.rgb == "green"]
     hand_holds = [h for h in holds if h.rgb in ("blue", "red")]
     n_feet = max(0, min(feet, len(hand_holds) - 1))
-    lower = sorted(hand_holds, key=lambda h: h.row, reverse=True)[: max(1, len(hand_holds) // 2)]
     placed = 0
+
+    # Mandatory: at least one foot just below the start, on the bottom or
+    # second-from-bottom row, within 5 columns of a start hold.
+    if n_feet >= 1 and start_cols:
+        anchor = rnd.choice(start_cols)
+        for fr in rnd.sample([num_rows - 1, num_rows - 2], 2):
+            cols = [c for c in range(max(0, anchor - 5), min(num_cols, anchor + 6)) if free(fr, c)]
+            if cols:
+                holds.append(place(fr, rnd.choice(cols), "purple"))
+                placed += 1
+                break
+
+    # Remaining feet hang below the lower hand holds with wide lateral variance.
+    lower = sorted(hand_holds, key=lambda h: h.row, reverse=True)[: max(1, len(hand_holds) // 2)]
     attempts = 0
     while placed < n_feet and attempts < n_feet * 40 + 40:
         attempts += 1
@@ -231,6 +245,22 @@ def _build_random_problem(num_rows: int, num_cols: int, hands: int, feet: int) -
         if free(frow, fcol):
             holds.append(place(frow, fcol, "purple"))
             placed += 1
+
+    # --- post-check: keep the finish within reach of its predecessor ---
+    chain = [h for h in holds if h.rgb in ("blue", "red")]
+    finish = next((h for h in holds if h.rgb == "red"), None)
+    if finish is not None and len(chain) >= 2:
+        pred = chain[-2]
+        if max(abs(finish.row - pred.row), abs(finish.col - pred.col)) > REACH:
+            used.discard((finish.row, finish.col))
+            # nearest reachable cell to the predecessor, preferring the top
+            for r in range(max(0, pred.row - REACH), pred.row + 1):
+                cols = [c for c in range(max(0, pred.col - REACH), min(num_cols, pred.col + REACH + 1))
+                        if free(r, c)]
+                if cols:
+                    finish.row, finish.col = r, min(cols, key=lambda c: abs(c - pred.col))
+                    break
+            used.add((finish.row, finish.col))
 
     return holds
 
