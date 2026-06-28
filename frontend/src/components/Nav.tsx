@@ -12,6 +12,7 @@ export function Nav() {
     { to: "/generate", label: "Random" },
     { to: "/routines", label: "Routines" },
     { to: "/settings", label: "Settings" },
+    { to: "/help",     label: "Help" },
   ];
 
   return (
