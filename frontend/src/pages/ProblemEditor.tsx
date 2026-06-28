@@ -21,6 +21,7 @@ export default function ProblemEditor() {
   const { user } = useAuth();
 
   const [selectedColor, setSelectedColor] = useState("blue");
+  const [editMode, setEditMode] = useState(false);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [grade, setGrade] = useState("");
@@ -89,7 +90,15 @@ export default function ProblemEditor() {
   if (loading) return <div className="p-6 text-slate-500">Loading...</div>;
   if (!current) return <div className="p-6 text-slate-500">Problem not found.</div>;
 
-  const editable = canEdit(user, current.created_by);
+  const canModify = canEdit(user, current.created_by);
+  const liveEdit = canModify && editMode;
+
+  function toggleEditMode() {
+    setEditMode((on) => {
+      if (on) setEditing(false); // leaving edit mode closes the meta form
+      return !on;
+    });
+  }
 
   return (
     <div className="flex h-[calc(100vh-49px)]">
@@ -105,7 +114,7 @@ export default function ProblemEditor() {
           leds={current.leds}
           selectedColor={selectedColor}
           onCellClick={handleCellClick}
-          readOnly={!editable}
+          readOnly={!liveEdit}
         />
       </div>
 
@@ -157,14 +166,14 @@ export default function ProblemEditor() {
             </div>
           ) : (
             <div
-              className={editable ? "cursor-pointer group" : ""}
-              onClick={editable ? () => setEditing(true) : undefined}
+              className={liveEdit ? "cursor-pointer group" : ""}
+              onClick={liveEdit ? () => setEditing(true) : undefined}
             >
               <div className="flex items-start justify-between">
                 <h2 className="text-slate-100 font-semibold text-lg leading-tight">
                   {current.name || "Untitled"}
                 </h2>
-                {editable && (
+                {liveEdit && (
                   <span className="text-xs text-slate-600 group-hover:text-slate-400 ml-2 mt-1">edit</span>
                 )}
               </div>
@@ -188,12 +197,31 @@ export default function ProblemEditor() {
 
         <hr className="border-slate-800" />
 
-        {/* Color picker — owners/admins only */}
-        {editable ? (
-          <ColorPicker selected={selectedColor} onChange={setSelectedColor} />
-        ) : (
-          <p className="text-xs text-slate-600">View only — you can load and log this problem, but only its owner or an admin can edit it.</p>
+        {/* Edit-mode toggle — owners/admins only. Off by default so a stray
+            tap on the board can't alter holds. */}
+        {canModify && (
+          <button
+            onClick={toggleEditMode}
+            className={`w-full py-2 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+              editMode
+                ? "bg-amber-600 hover:bg-amber-500 text-white"
+                : "bg-slate-800 hover:bg-slate-700 text-slate-300"
+            }`}
+          >
+            <span>{editMode ? "✓ Done editing" : "✎ Edit holds"}</span>
+          </button>
         )}
+
+        {liveEdit && (
+          <p className="text-xs text-amber-500/80 -mt-2">Edit mode on — tap the board to place or remove holds.</p>
+        )}
+
+        {/* Color picker — only while editing */}
+        {liveEdit ? (
+          <ColorPicker selected={selectedColor} onChange={setSelectedColor} />
+        ) : !canModify ? (
+          <p className="text-xs text-slate-600">View only — you can load and log this problem, but only its owner or an admin can edit it.</p>
+        ) : null}
 
         <div className="text-xs text-slate-600">
           {current.leds.length} holds placed
@@ -209,7 +237,7 @@ export default function ProblemEditor() {
           >
             Load to Board
           </button>
-          {editable && (
+          {liveEdit && (
           <button
             onClick={handleClear}
             className="w-full py-2 hover:bg-red-900/30 text-slate-500 hover:text-red-400 rounded text-sm transition-colors"

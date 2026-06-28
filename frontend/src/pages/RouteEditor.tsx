@@ -25,6 +25,8 @@ export default function RouteEditor() {
   // pending: a cell that has been clicked once but not confirmed
   const [pending, setPending] = useState<{ row: number; col: number } | null>(null);
 
+  // edit mode — off by default so a stray tap can't place/remove holds
+  const [editMode, setEditMode] = useState(false);
   // editing meta
   const [editingMeta, setEditingMeta] = useState(false);
   const [name, setName] = useState("");
@@ -76,7 +78,7 @@ export default function RouteEditor() {
   }, [rows, cols]);
 
   async function handleCellClick(r: number, c: number, existingHold: RouteHold | undefined) {
-    if (!route || !id) return;
+    if (!route || !id || !editMode) return;
 
     // Can't click an already-confirmed hold
     if (existingHold) return;
@@ -96,6 +98,13 @@ export default function RouteEditor() {
       setPending({ row: r, col: c });
       await api.routes.preview(Number(id), r, c);
     }
+  }
+
+  function toggleEditMode() {
+    setEditMode((on) => {
+      if (on) { setEditingMeta(false); setPending(null); }
+      return !on;
+    });
   }
 
   async function handleRemoveLast() {
@@ -162,7 +171,7 @@ export default function RouteEditor() {
               return (
                 <div
                   key={key}
-                  className="hold-cell cursor-pointer transition-colors duration-100"
+                  className={`hold-cell transition-colors duration-100 ${editMode ? "cursor-pointer" : "cursor-default"}`}
                   style={{
                     backgroundColor: bg,
                     width: cellSize,
@@ -253,12 +262,12 @@ export default function RouteEditor() {
             </div>
           </div>
         ) : (
-          <div className="cursor-pointer group" onClick={() => setEditingMeta(true)}>
+          <div className={editMode ? "cursor-pointer group" : ""} onClick={editMode ? () => setEditingMeta(true) : undefined}>
             <div className="flex items-start justify-between">
               <h2 className="text-slate-100 font-semibold text-lg leading-tight">
                 {route.name || "Untitled"}
               </h2>
-              <span className="text-xs text-slate-600 group-hover:text-slate-400 ml-2 mt-1">edit</span>
+              {editMode && <span className="text-xs text-slate-600 group-hover:text-slate-400 ml-2 mt-1">edit</span>}
             </div>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               <span className="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded">{route.duration}s/hold</span>
@@ -269,16 +278,34 @@ export default function RouteEditor() {
 
         <hr className="border-slate-800" />
 
+        {/* Edit-mode toggle — off by default so a stray tap can't change holds */}
+        <button
+          onClick={toggleEditMode}
+          className={`w-full py-2 rounded text-sm font-medium transition-colors ${
+            editMode
+              ? "bg-amber-600 hover:bg-amber-500 text-white"
+              : "bg-slate-800 hover:bg-slate-700 text-slate-300"
+          }`}
+        >
+          {editMode ? "✓ Done editing" : "✎ Edit holds"}
+        </button>
+
         {/* Instructions */}
-        <div className="text-xs text-slate-500 leading-relaxed">
-          {pending ? (
-            <span className="text-yellow-500">
-              LED lit yellow. Click the same cell again to confirm, or click another to preview it instead.
-            </span>
-          ) : (
-            "Click a cell to preview it on the board. Click the same cell again to add it to the sequence."
-          )}
-        </div>
+        {editMode ? (
+          <div className="text-xs text-slate-500 leading-relaxed">
+            {pending ? (
+              <span className="text-yellow-500">
+                LED lit yellow. Click the same cell again to confirm, or click another to preview it instead.
+              </span>
+            ) : (
+              "Click a cell to preview it on the board. Click the same cell again to add it to the sequence."
+            )}
+          </div>
+        ) : (
+          <div className="text-xs text-slate-600 leading-relaxed">
+            View only. Tap “Edit holds” to change the sequence.
+          </div>
+        )}
 
         <div className="text-sm text-slate-400">
           {total === 0 ? "No holds yet" : `${total} hold${total !== 1 ? "s" : ""}`}
@@ -287,25 +314,29 @@ export default function RouteEditor() {
         <hr className="border-slate-800" />
 
         <div className="flex flex-col gap-2">
-          <button
-            onClick={handleRemoveLast}
-            disabled={total === 0}
-            className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm transition-colors disabled:opacity-40"
-          >
-            ↩ Remove Last Hold
-          </button>
+          {editMode && (
+            <button
+              onClick={handleRemoveLast}
+              disabled={total === 0}
+              className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm transition-colors disabled:opacity-40"
+            >
+              ↩ Remove Last Hold
+            </button>
+          )}
           <button
             onClick={() => navigate(`/routes/${route.id}`)}
             className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm transition-colors"
           >
             View / Play
           </button>
-          <button
-            onClick={handleDelete}
-            className="w-full py-2 hover:bg-red-900/30 text-slate-500 hover:text-red-400 rounded text-sm transition-colors"
-          >
-            Delete Route
-          </button>
+          {editMode && (
+            <button
+              onClick={handleDelete}
+              className="w-full py-2 hover:bg-red-900/30 text-slate-500 hover:text-red-400 rounded text-sm transition-colors"
+            >
+              Delete Route
+            </button>
+          )}
           <button
             onClick={() => navigate("/routes")}
             className="w-full py-2 text-slate-600 hover:text-slate-400 rounded text-sm transition-colors"
