@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "@/api";
-import type { Attempt, Send, Favorite } from "@/api";
+import type { Attempt, Send, Favorite, WorkoutSession } from "@/api";
 import { RatingInput } from "@/components/RatingStars";
+import { useAuth } from "@/store/useAuth";
+import { canEdit } from "@/lib/perms";
 
 interface Props {
   problemId?: number;
@@ -11,6 +13,7 @@ interface Props {
 }
 
 export function ActivityPanel({ problemId, routeId, onActivity }: Props) {
+  const { user } = useAuth();
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [sends, setSends] = useState<Send[]>([]);
   const [favorite, setFavorite] = useState<Favorite | null>(null);
@@ -20,15 +23,22 @@ export function ActivityPanel({ problemId, routeId, onActivity }: Props) {
   const [logginAttempt, setLoggingAttempt] = useState(false);
   const [loggingSend, setLoggingSend] = useState(false);
   const [showSendForm, setShowSendForm] = useState(false);
+  const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+  const [sessionSel, setSessionSel] = useState("");
+  const [addingToSession, setAddingToSession] = useState(false);
+  const [sessionMsg, setSessionMsg] = useState("");
 
   const params = problemId ? { problem_id: problemId } : { route_id: routeId };
   const canRate = attempts.length > 0 || sends.length > 0;
+  // Sessions the user is allowed to add to (their own, or any if admin).
+  const mySessions = sessions.filter((s) => canEdit(user, s.created_by));
 
   useEffect(() => {
     if (!problemId && !routeId) return;
     api.attempts.list(params).then(setAttempts).catch(() => {});
     api.sends.list(params).then(setSends).catch(() => {});
     api.ratings.get(params).then((r) => setMyStars(r ? r.stars : null)).catch(() => {});
+    api.sessions.list().then(setSessions).catch(() => {});
     api.favorites.list(problemId ? "problem" : "route")
       .then((favs) => {
         const match = favs.find((f) =>
@@ -38,6 +48,29 @@ export function ActivityPanel({ problemId, routeId, onActivity }: Props) {
       })
       .catch(() => {});
   }, [problemId, routeId]);
+
+  async function addToSession() {
+    if (!sessionSel) return;
+    setAddingToSession(true);
+    try {
+      if (sessionSel === "__new__") {
+        const s = await api.sessions.create({ name: "New Session" });
+        await api.sessions.addItem(s.id, params);
+        setSessions((prev) => [s, ...prev]);
+        setSessionMsg(`Added to "${s.name}"`);
+      } else {
+        const target = sessions.find((s) => String(s.id) === sessionSel);
+        await api.sessions.addItem(Number(sessionSel), params);
+        setSessionMsg(`Added to "${target?.name ?? "session"}"`);
+      }
+      setSessionSel("");
+      setTimeout(() => setSessionMsg(""), 2500);
+    } catch {
+      setSessionMsg("Could not add");
+    } finally {
+      setAddingToSession(false);
+    }
+  }
 
   async function setRating(stars: number) {
     await api.ratings.set({ ...params, stars });
@@ -115,6 +148,34 @@ export function ActivityPanel({ problemId, routeId, onActivity }: Props) {
         <span>{favorite ? "★" : "☆"}</span>
         <span>{favorite ? "Favorited" : "Add to Favorites"}</span>
       </button>
+
+      <hr className="border-slate-800" />
+
+      {/* Add to a session (workout) */}
+      <div>
+        <span className="text-xs text-slate-500 uppercase tracking-wider block mb-2">Add to Session</span>
+        <div className="flex gap-1.5">
+          <select
+            value={sessionSel}
+            onChange={(e) => setSessionSel(e.target.value)}
+            className="flex-1 min-w-0 bg-slate-800 border border-slate-700 text-slate-200 rounded px-2 py-1.5 text-xs"
+          >
+            <option value="">Choose a session…</option>
+            {mySessions.map((s) => (
+              <option key={s.id} value={s.id}>{s.name || "Untitled"}</option>
+            ))}
+            <option value="__new__">+ New session</option>
+          </select>
+          <button
+            onClick={addToSession}
+            disabled={!sessionSel || addingToSession}
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors disabled:opacity-40"
+          >
+            {addingToSession ? "…" : "Add"}
+          </button>
+        </div>
+        {sessionMsg && <p className="text-xs text-green-500 mt-1.5">{sessionMsg}</p>}
+      </div>
 
       <hr className="border-slate-800" />
 
