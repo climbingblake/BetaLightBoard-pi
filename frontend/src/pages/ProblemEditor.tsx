@@ -6,6 +6,8 @@ import { ColorPicker } from "@/components/ColorPicker";
 import { api } from "@/api";
 import type { Led } from "@/api";
 import { ActivityPanel } from "@/components/ActivityPanel";
+import { RatingDisplay } from "@/components/RatingStars";
+import { fmtSendRate } from "@/lib/format";
 
 const GRADES = ["V0","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","V11","V12"];
 
@@ -24,6 +26,7 @@ export default function ProblemEditor() {
   const [status, setStatus] = useState("");
   const [rows, setRows] = useState(10);
   const [cols, setCols] = useState(10);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (id && id !== "new") fetchProblem(Number(id));
@@ -86,7 +89,11 @@ export default function ProblemEditor() {
   return (
     <div className="flex h-[calc(100vh-49px)]">
       {/* Board */}
-      <div className="flex-1 flex items-center justify-center bg-slate-950 overflow-hidden">
+      <div className="flex-1 relative flex items-center justify-center bg-slate-950 overflow-hidden">
+        <button
+          className="lg:hidden absolute top-3 right-3 z-10 p-2 bg-slate-800/80 rounded text-slate-300 hover:text-slate-100 text-lg leading-none"
+          onClick={() => setSidebarOpen(true)}
+        >☰</button>
         <BoardGrid
           rows={rows}
           cols={cols}
@@ -96,8 +103,12 @@ export default function ProblemEditor() {
         />
       </div>
 
+      {sidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-30 bg-black/60" onClick={() => setSidebarOpen(false)} />
+      )}
       {/* Sidebar */}
-      <div className="w-64 border-l border-slate-800 bg-slate-900 hidden lg:flex flex-col gap-5 p-5 overflow-y-auto">
+      <div className={`w-64 border-l border-slate-800 bg-slate-900 flex-col gap-5 p-5 overflow-y-auto ${sidebarOpen ? "fixed inset-y-0 right-0 z-40 flex" : "hidden lg:flex"}`}>
+        <button className="lg:hidden self-end text-slate-500 hover:text-slate-300 text-xl leading-none mb-1" onClick={() => setSidebarOpen(false)}>✕</button>
         {/* Problem meta */}
         <div>
           {editing ? (
@@ -159,6 +170,12 @@ export default function ProblemEditor() {
               )}
             </div>
           )}
+          <div className="mt-2">
+            <RatingDisplay avg={current.rating_avg} count={current.rating_count} />
+          </div>
+          <div className="mt-1 text-xs text-slate-500">
+            {current.ascents} ascents · {fmtSendRate(current.send_rate)} send rate
+          </div>
         </div>
 
         <hr className="border-slate-800" />
@@ -198,7 +215,7 @@ export default function ProblemEditor() {
           <p className="text-xs text-green-500 text-center">{status}</p>
         )}
 
-        <ActivityPanel problemId={current.id} />
+        <ActivityPanel problemId={current.id} onActivity={() => fetchProblem(current.id)} />
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ export function Nav() {
   const links = [
     { to: "/",         label: "Problems" },
     { to: "/routes",   label: "Routes" },
+    { to: "/sessions", label: "Sessions" },
     { to: "/generate", label: "Random" },
     { to: "/routines", label: "Routines" },
     { to: "/settings", label: "Settings" },

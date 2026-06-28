@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { api } from "@/api";
-import type { Problem, Led } from "@/api";
+import type { Problem, Led, SortKey } from "@/api";
 
 interface ProblemStore {
   problems: Problem[];
@@ -8,7 +8,7 @@ interface ProblemStore {
   loading: boolean;
   error: string | null;
 
-  fetchProblems: (filters?: { grade?: string; setter?: string }) => Promise<void>;
+  fetchProblems: (filters?: { grade?: string; setter?: string; sort?: SortKey }) => Promise<void>;
   fetchProblem: (id: number) => Promise<void>;
   createProblem: (data: Partial<Problem>) => Promise<Problem>;
   updateProblem: (id: number, data: Partial<Problem>) => Promise<void>;

@@ -63,7 +63,13 @@ export interface Problem {
   setter: string | null;
   grade: string | null;
   created_at: string;
+  updated_at: string | null;
   leds: Led[];
+  rating_avg: number | null;
+  rating_count: number;
+  ascents: number;
+  attempts: number;
+  send_rate: number | null;
 }
 
 export interface Setting {
@@ -86,14 +92,55 @@ export interface Route {
   number_shown: number;
   repeat: boolean;
   created_at: string;
+  updated_at: string | null;
   holds: RouteHold[];
+  rating_avg: number | null;
+  rating_count: number;
+  ascents: number;
+  attempts: number;
+  send_rate: number | null;
+}
+
+export type SortKey =
+  | "created_desc"
+  | "created_asc"
+  | "rating_desc"
+  | "ascents_desc"
+  | "send_rate_desc";
+
+export interface Rating {
+  id: number;
+  user_id: number;
+  problem_id: number | null;
+  route_id: number | null;
+  stars: number;
+}
+
+export interface SessionItem {
+  id: number;
+  position: number;
+  kind: "problem" | "route";
+  ref_id: number;
+  name: string;
+  grade: string | null;
+  holds: number;
+}
+
+export interface WorkoutSession {
+  id: number;
+  name: string;
+  description: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  item_count: number;
+  items: SessionItem[];
 }
 
 // ---- Problems ----
 
 export const api = {
   problems: {
-    list: (params?: { grade?: string; setter?: string }) => {
+    list: (params?: { grade?: string; setter?: string; sort?: SortKey }) => {
       const filtered = Object.fromEntries(
         Object.entries(params ?? {}).filter(([, v]) => v != null && v !== "undefined")
       );
@@ -180,7 +227,13 @@ export const api = {
   },
 
   routes: {
-    list:   ()                => req<Route[]>("GET", "/routes"),
+    list:   (params?: { q?: string; sort?: SortKey }) => {
+      const filtered = Object.fromEntries(
+        Object.entries(params ?? {}).filter(([, v]) => v != null && v !== "")
+      );
+      const qs = new URLSearchParams(filtered).toString();
+      return req<Route[]>("GET", `/routes${qs ? "?" + qs : ""}`);
+    },
     get:    (id: number)      => req<Route>("GET", `/routes/${id}`),
     create: (body: Partial<Route>) => req<Route>("POST", "/routes", body),
     update: (id: number, body: Partial<Route>) => req<Route>("PUT", `/routes/${id}`, body),
@@ -195,5 +248,38 @@ export const api = {
     stop:   (id: number)      => req<void>("POST", `/routes/${id}/stop`),
     status: (id: number)      =>
       req<{ playing: boolean; current_index: number; total: number }>("GET", `/routes/${id}/status`),
+  },
+
+  ratings: {
+    get: (params: { problem_id?: number; route_id?: number }) => {
+      const qs = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]))
+      ).toString();
+      return req<Rating | null>("GET", `/ratings/me${qs ? "?" + qs : ""}`);
+    },
+    set: (body: { problem_id?: number; route_id?: number; stars: number }) =>
+      req<Rating>("POST", "/ratings", body),
+    clear: (params: { problem_id?: number; route_id?: number }) => {
+      const qs = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]))
+      ).toString();
+      return req<void>("DELETE", `/ratings${qs ? "?" + qs : ""}`);
+    },
+  },
+
+  sessions: {
+    list:   ()           => req<WorkoutSession[]>("GET", "/sessions"),
+    get:    (id: number) => req<WorkoutSession>("GET", `/sessions/${id}`),
+    create: (body: { name: string; description?: string }) =>
+      req<WorkoutSession>("POST", "/sessions", body),
+    update: (id: number, body: { name: string; description?: string }) =>
+      req<WorkoutSession>("PUT", `/sessions/${id}`, body),
+    delete: (id: number) => req<void>("DELETE", `/sessions/${id}`),
+    addItem: (id: number, body: { problem_id?: number; route_id?: number }) =>
+      req<WorkoutSession>("POST", `/sessions/${id}/items`, body),
+    removeItem: (id: number, itemId: number) =>
+      req<WorkoutSession>("DELETE", `/sessions/${id}/items/${itemId}`),
+    reorder: (id: number, orderedIds: number[]) =>
+      req<WorkoutSession>("PUT", `/sessions/${id}/items/order`, { ordered_ids: orderedIds }),
   },
 };

@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 import { api } from "@/api";
 import type { Attempt, Send, Favorite } from "@/api";
+import { RatingInput } from "@/components/RatingStars";
 
 interface Props {
   problemId?: number;
   routeId?: number;
+  /** Called after any activity change (send/attempt/rating) so parents can refresh aggregate stats. */
+  onActivity?: () => void;
 }
 
-export function ActivityPanel({ problemId, routeId }: Props) {
+export function ActivityPanel({ problemId, routeId, onActivity }: Props) {
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [sends, setSends] = useState<Send[]>([]);
   const [favorite, setFavorite] = useState<Favorite | null>(null);
+  const [myStars, setMyStars] = useState<number | null>(null);
   const [attemptNote, setAttemptNote] = useState("");
   const [sendNote, setSendNote] = useState("");
   const [logginAttempt, setLoggingAttempt] = useState(false);
@@ -18,11 +22,13 @@ export function ActivityPanel({ problemId, routeId }: Props) {
   const [showSendForm, setShowSendForm] = useState(false);
 
   const params = problemId ? { problem_id: problemId } : { route_id: routeId };
+  const canRate = attempts.length > 0 || sends.length > 0;
 
   useEffect(() => {
     if (!problemId && !routeId) return;
     api.attempts.list(params).then(setAttempts).catch(() => {});
     api.sends.list(params).then(setSends).catch(() => {});
+    api.ratings.get(params).then((r) => setMyStars(r ? r.stars : null)).catch(() => {});
     api.favorites.list(problemId ? "problem" : "route")
       .then((favs) => {
         const match = favs.find((f) =>
@@ -33,12 +39,19 @@ export function ActivityPanel({ problemId, routeId }: Props) {
       .catch(() => {});
   }, [problemId, routeId]);
 
+  async function setRating(stars: number) {
+    await api.ratings.set({ ...params, stars });
+    setMyStars(stars);
+    onActivity?.();
+  }
+
   async function logAttempt() {
     setLoggingAttempt(true);
     try {
       const a = await api.attempts.log({ ...params, notes: attemptNote || undefined });
       setAttempts((prev) => [a, ...prev]);
       setAttemptNote("");
+      onActivity?.();
     } finally {
       setLoggingAttempt(false);
     }
@@ -48,6 +61,7 @@ export function ActivityPanel({ problemId, routeId }: Props) {
     if (!confirm("Clear all your attempts for this?")) return;
     await api.attempts.clear(params);
     setAttempts([]);
+    onActivity?.();
   }
 
   async function logSend() {
@@ -55,8 +69,11 @@ export function ActivityPanel({ problemId, routeId }: Props) {
     try {
       const s = await api.sends.log({ ...params, notes: sendNote || undefined });
       setSends((prev) => [s, ...prev]);
+      // A send also records an attempt server-side; reflect that locally.
+      api.attempts.list(params).then(setAttempts).catch(() => {});
       setSendNote("");
       setShowSendForm(false);
+      onActivity?.();
     } finally {
       setLoggingSend(false);
     }
@@ -65,6 +82,7 @@ export function ActivityPanel({ problemId, routeId }: Props) {
   async function deleteSend(id: number) {
     await api.sends.delete(id);
     setSends((prev) => prev.filter((s) => s.id !== id));
+    onActivity?.();
   }
 
   async function toggleFavorite() {
@@ -97,6 +115,18 @@ export function ActivityPanel({ problemId, routeId }: Props) {
         <span>{favorite ? "★" : "☆"}</span>
         <span>{favorite ? "Favorited" : "Add to Favorites"}</span>
       </button>
+
+      <hr className="border-slate-800" />
+
+      {/* Rating */}
+      <div>
+        <span className="text-xs text-slate-500 uppercase tracking-wider block mb-2">Your Rating</span>
+        {canRate ? (
+          <RatingInput value={myStars} onChange={setRating} />
+        ) : (
+          <p className="text-xs text-slate-600">Log an attempt or send to rate.</p>
+        )}
+      </div>
 
       <hr className="border-slate-800" />
 

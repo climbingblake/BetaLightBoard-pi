@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "@/api";
 import type { Route, RouteHold } from "@/api";
 import { ActivityPanel } from "@/components/ActivityPanel";
+import { RatingDisplay } from "@/components/RatingStars";
+import { fmtSendRate } from "@/lib/format";
 
 // Violet → Orange gradient across all holds (first = violet, last = orange)
 function holdColor(index: number, total: number): string {
@@ -25,6 +27,7 @@ export default function RouteShow() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [cellSize, setCellSize] = useState(60);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -98,7 +101,11 @@ export default function RouteShow() {
   return (
     <div className="flex h-[calc(100vh-49px)]">
       {/* Board */}
-      <div ref={containerRef} className="flex-1 flex items-center justify-center bg-slate-950 overflow-hidden">
+      <div ref={containerRef} className="flex-1 relative flex items-center justify-center bg-slate-950 overflow-hidden">
+        <button
+          className="lg:hidden absolute top-3 right-3 z-10 p-2 bg-slate-800/80 rounded text-slate-300 hover:text-slate-100 text-lg leading-none"
+          onClick={() => setSidebarOpen(true)}
+        >☰</button>
         <div
           className="inline-grid gap-1 p-2"
           style={{
@@ -136,8 +143,12 @@ export default function RouteShow() {
         </div>
       </div>
 
+      {sidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-30 bg-black/60" onClick={() => setSidebarOpen(false)} />
+      )}
       {/* Sidebar */}
-      <div className="w-64 border-l border-slate-800 bg-slate-900 hidden lg:flex flex-col gap-5 p-5 overflow-y-auto">
+      <div className={`w-64 border-l border-slate-800 bg-slate-900 flex-col gap-5 p-5 overflow-y-auto ${sidebarOpen ? "fixed inset-y-0 right-0 z-40 flex" : "hidden lg:flex"}`}>
+        <button className="lg:hidden self-end text-slate-500 hover:text-slate-300 text-xl leading-none mb-1" onClick={() => setSidebarOpen(false)}>✕</button>
         <div>
           <h2 className="text-slate-100 font-semibold text-lg leading-tight">
             {route.name || "Untitled"}
@@ -155,6 +166,12 @@ export default function RouteShow() {
             <span className="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded">
               {route.number_shown} shown
             </span>
+          </div>
+          <div className="mt-2 flex items-center gap-3">
+            <RatingDisplay avg={route.rating_avg} count={route.rating_count} />
+          </div>
+          <div className="mt-1 text-xs text-slate-500">
+            {route.ascents} ascents · {fmtSendRate(route.send_rate)} send rate
           </div>
         </div>
 
@@ -218,7 +235,7 @@ export default function RouteShow() {
           </button>
         </div>
 
-        <ActivityPanel routeId={route.id} />
+        <ActivityPanel routeId={route.id} onActivity={() => api.routes.get(route.id).then(setRoute)} />
       </div>
     </div>
   );

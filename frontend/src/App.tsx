@@ -9,6 +9,9 @@ import Settings from "@/pages/Settings";
 import RouteList from "@/pages/RouteList";
 import RouteShow from "@/pages/RouteShow";
 import RouteEditor from "@/pages/RouteEditor";
+import SessionList from "@/pages/SessionList";
+import SessionEditor from "@/pages/SessionEditor";
+import SessionRunner from "@/pages/SessionRunner";
 import Login from "@/pages/Login";
 import { AuthContext, useAuth, useAuthState } from "@/store/useAuth";
 
@@ -44,6 +47,9 @@ function AppShell() {
           <Route path="/routes"          element={<RouteList />} />
           <Route path="/routes/:id"      element={<RouteShow />} />
           <Route path="/routes/:id/edit" element={<RouteEditor />} />
+          <Route path="/sessions"           element={<SessionList />} />
+          <Route path="/sessions/:id/edit"  element={<SessionEditor />} />
+          <Route path="/sessions/:id/run"   element={<SessionRunner />} />
           <Route path="*"                element={<Navigate to="/" replace />} />
         </Routes>
       </main>

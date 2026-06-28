@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Problem, Led, Setting
 from app import led_controller as leds
+from app import stats as stats_mod
 
 router = APIRouter(prefix="/api/problems", tags=["problems"])
 
@@ -32,9 +33,25 @@ class ProblemOut(BaseModel):
     setter: str | None
     grade: str | None
     created_at: datetime
+    updated_at: datetime | None = None
     leds: list[LedOut] = []
+    rating_avg: float | None = None
+    rating_count: int = 0
+    ascents: int = 0
+    attempts: int = 0
+    send_rate: float | None = None
 
     model_config = {"from_attributes": True}
+
+
+def _problem_out(p: Problem, st: dict) -> ProblemOut:
+    out = ProblemOut.model_validate(p)
+    out.rating_avg = st["rating_avg"]
+    out.rating_count = st["rating_count"]
+    out.ascents = st["ascents"]
+    out.attempts = st["attempts"]
+    out.send_rate = st["send_rate"]
+    return out
 
 
 class ProblemIn(BaseModel):
@@ -80,13 +97,26 @@ def _load_problem_to_board(problem: Problem, num_cols: int):
 # ---------------------------------------------------------------------------
 
 @router.get("", response_model=list[ProblemOut])
-def list_problems(grade: str | None = None, setter: str | None = None, db: Session = Depends(get_db)):
+def list_problems(
+    grade: str | None = None,
+    setter: str | None = None,
+    sort: str = "created_desc",
+    db: Session = Depends(get_db),
+):
     q = db.query(Problem)
     if grade and grade != "ALL":
         q = q.filter(Problem.grade.ilike(grade))
     if setter and setter != "ALL":
         q = q.filter(Problem.setter.ilike(setter))
-    return q.order_by(Problem.created_at.desc()).all()
+    problems = q.all()
+
+    stats = stats_mod.compute_stats(db, "problem_id")
+    default = {"ascents": 0, "attempts": 0, "send_rate": None, "rating_avg": None, "rating_count": 0}
+    pairs = [(p, stats.get(p.id, default)) for p in problems]
+
+    key, reverse = stats_mod.sort_key(sort if sort in stats_mod.SORTS else "created_desc")
+    pairs.sort(key=key, reverse=reverse)
+    return [_problem_out(p, st) for p, st in pairs]
 
 
 @router.post("", response_model=ProblemOut, status_code=201)
@@ -95,7 +125,7 @@ def create_problem(body: ProblemIn, db: Session = Depends(get_db)):
     db.add(problem)
     db.commit()
     db.refresh(problem)
-    return problem
+    return _problem_out(problem, stats_mod.stats_for(db, "problem_id", problem.id))
 
 
 @router.get("/generate", response_model=list[LedOut])
@@ -147,7 +177,7 @@ def save_random(body: SaveRandomIn, db: Session = Depends(get_db)):
         db.add(Led(problem_id=problem.id, row=l.row, col=l.col, rgb=l.rgb))
     db.commit()
     db.refresh(problem)
-    return problem
+    return _problem_out(problem, stats_mod.stats_for(db, "problem_id", problem.id))
 
 
 @router.get("/{problem_id}", response_model=ProblemOut)
@@ -155,7 +185,7 @@ def get_problem(problem_id: int, db: Session = Depends(get_db)):
     p = db.get(Problem, problem_id)
     if not p:
         raise HTTPException(404, "Problem not found")
-    return p
+    return _problem_out(p, stats_mod.stats_for(db, "problem_id", problem_id))
 
 
 @router.put("/{problem_id}", response_model=ProblemOut)
@@ -167,7 +197,7 @@ def update_problem(problem_id: int, body: ProblemIn, db: Session = Depends(get_d
         setattr(p, k, v)
     db.commit()
     db.refresh(p)
-    return p
+    return _problem_out(p, stats_mod.stats_for(db, "problem_id", problem_id))
 
 
 @router.delete("/{problem_id}", status_code=204)
@@ -195,5 +225,6 @@ def clear_leds(problem_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "Problem not found")
     for led in p.leds:
         db.delete(led)
+    p.updated_at = datetime.utcnow()
     db.commit()
     leds.all_off()

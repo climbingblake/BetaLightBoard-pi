@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -39,6 +40,7 @@ def add_led(problem_id: int, body: LedIn, db: Session = Depends(get_db)):
         raise HTTPException(404, "Problem not found")
     led = Led(problem_id=problem_id, row=body.row, col=body.col, rgb=body.rgb)
     db.add(led)
+    p.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(led)
     lc.set_led(led.row, led.col, led.rgb, _num_cols(db))
@@ -51,6 +53,8 @@ def update_led(led_id: int, body: LedColorIn, db: Session = Depends(get_db)):
     if not led:
         raise HTTPException(404, "LED not found")
     led.rgb = body.rgb
+    if led.problem:
+        led.problem.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(led)
     lc.set_led(led.row, led.col, led.rgb, _num_cols(db))
@@ -63,6 +67,8 @@ def delete_led(led_id: int, db: Session = Depends(get_db)):
     if not led:
         raise HTTPException(404, "LED not found")
     row, col = led.row, led.col
+    if led.problem:
+        led.problem.updated_at = datetime.utcnow()
     db.delete(led)
     db.commit()
     lc.set_led(row, col, "off", _num_cols(db))

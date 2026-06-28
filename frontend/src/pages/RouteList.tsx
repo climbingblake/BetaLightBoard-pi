@@ -1,25 +1,36 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/api";
-import type { Route } from "@/api";
+import type { Route, SortKey } from "@/api";
+import { RatingDisplay } from "@/components/RatingStars";
+import { fmtSendRate, fmtRelative } from "@/lib/format";
+
+const SORTS: { value: SortKey; label: string }[] = [
+  { value: "created_desc", label: "Newest" },
+  { value: "created_asc", label: "Oldest" },
+  { value: "rating_desc", label: "Top rated" },
+  { value: "ascents_desc", label: "Most ascents" },
+  { value: "send_rate_desc", label: "Highest send rate" },
+];
 
 export default function RouteList() {
   const navigate = useNavigate();
   const [routes, setRoutes] = useState<Route[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [q, setQ] = useState("");
+  const [sort, setSort] = useState<SortKey>("created_desc");
 
   useEffect(() => {
-    api.routes.list().then((r) => { setRoutes(r); setLoading(false); });
-  }, []);
+    setLoading(true);
+    api.routes.list({ q: q || undefined, sort }).then((r) => { setRoutes(r); setLoading(false); });
+  }, [q, sort]);
 
   async function handleCreate() {
     setCreating(true);
     const r = await api.routes.create({ name: "New Route", duration: 3.0, number_shown: 3, repeat: false });
     navigate(`/routes/${r.id}/edit`);
   }
-
-  if (loading) return <div className="p-6 text-slate-500">Loading...</div>;
 
   return (
     <div className="max-w-2xl mx-auto p-6 mt-8">
@@ -34,7 +45,31 @@ export default function RouteList() {
         </button>
       </div>
 
-      {routes.length === 0 ? (
+      <div className="flex gap-4 mb-6">
+        <div className="flex-1">
+          <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Search</label>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by name…"
+            className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded px-3 py-1.5 text-sm"
+          />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Sort</label>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="bg-slate-800 border border-slate-700 text-slate-200 rounded px-3 py-1.5 text-sm"
+          >
+            {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-slate-500 text-sm">Loading...</p>
+      ) : routes.length === 0 ? (
         <p className="text-slate-500 text-sm">No routes yet.</p>
       ) : (
         <div className="flex flex-col gap-2">
@@ -45,10 +80,13 @@ export default function RouteList() {
               onClick={() => navigate(`/routes/${r.id}`)}
             >
               <div>
-                <span className="text-slate-100 font-medium">{r.name || "Untitled"}</span>
-                <span className="text-slate-600 text-xs ml-3">
-                  {r.holds.length} holds · {r.duration}s · {r.number_shown} shown
-                  {r.repeat && " · repeat"}
+                <div className="flex items-center gap-3">
+                  <span className="text-slate-100 font-medium">{r.name || "Untitled"}</span>
+                  <RatingDisplay avg={r.rating_avg} count={r.rating_count} />
+                </div>
+                <span className="text-slate-600 text-xs">
+                  {r.holds.length} holds · {r.ascents} ascents · {fmtSendRate(r.send_rate)} send rate
+                  {r.updated_at && ` · ${fmtRelative(r.updated_at)}`}
                 </span>
               </div>
               <span className="text-slate-600 text-xs">▶</span>

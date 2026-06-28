@@ -33,6 +33,7 @@ export default function RouteEditor() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [cellSize, setCellSize] = useState(60);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -127,7 +128,11 @@ export default function RouteEditor() {
   return (
     <div className="flex h-[calc(100vh-49px)]">
       {/* Board */}
-      <div ref={containerRef} className="flex-1 flex items-center justify-center bg-slate-950 overflow-hidden">
+      <div ref={containerRef} className="flex-1 relative flex items-center justify-center bg-slate-950 overflow-hidden">
+        <button
+          className="lg:hidden absolute top-3 right-3 z-10 p-2 bg-slate-800/80 rounded text-slate-300 hover:text-slate-100 text-lg leading-none"
+          onClick={() => setSidebarOpen(true)}
+        >☰</button>
         <div
           className="inline-grid gap-1 p-2"
           style={{
@@ -179,8 +184,12 @@ export default function RouteEditor() {
         </div>
       </div>
 
+      {sidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-30 bg-black/60" onClick={() => setSidebarOpen(false)} />
+      )}
       {/* Sidebar */}
-      <div className="w-64 border-l border-slate-800 bg-slate-900 hidden lg:flex flex-col gap-5 p-5 overflow-y-auto">
+      <div className={`w-64 border-l border-slate-800 bg-slate-900 flex-col gap-5 p-5 overflow-y-auto ${sidebarOpen ? "fixed inset-y-0 right-0 z-40 flex" : "hidden lg:flex"}`}>
+        <button className="lg:hidden self-end text-slate-500 hover:text-slate-300 text-xl leading-none mb-1" onClick={() => setSidebarOpen(false)}>✕</button>
         {/* Meta */}
         {editingMeta ? (
           <div className="flex flex-col gap-3">

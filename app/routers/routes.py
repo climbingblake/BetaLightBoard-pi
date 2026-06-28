@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Route, RouteHold, Setting
 from app import led_controller as leds
+from app import stats as stats_mod
 
 router = APIRouter(prefix="/api/routes", tags=["routes"])
 
@@ -30,9 +31,25 @@ class RouteOut(BaseModel):
     number_shown: int
     repeat: bool
     created_at: datetime
+    updated_at: datetime | None = None
     holds: list[RouteHoldOut] = []
+    rating_avg: float | None = None
+    rating_count: int = 0
+    ascents: int = 0
+    attempts: int = 0
+    send_rate: float | None = None
 
     model_config = {"from_attributes": True}
+
+
+def _route_out(r: Route, st: dict) -> RouteOut:
+    out = RouteOut.model_validate(r)
+    out.rating_avg = st["rating_avg"]
+    out.rating_count = st["rating_count"]
+    out.ascents = st["ascents"]
+    out.attempts = st["attempts"]
+    out.send_rate = st["send_rate"]
+    return out
 
 
 class RouteIn(BaseModel):
@@ -69,8 +86,19 @@ def _get_route_or_404(route_id: int, db: Session) -> Route:
 # ---------------------------------------------------------------------------
 
 @router.get("", response_model=list[RouteOut])
-def list_routes(db: Session = Depends(get_db)):
-    return db.query(Route).order_by(Route.created_at.desc()).all()
+def list_routes(q: str | None = None, sort: str = "created_desc", db: Session = Depends(get_db)):
+    query = db.query(Route)
+    if q:
+        query = query.filter(Route.name.ilike(f"%{q}%"))
+    routes = query.all()
+
+    stats = stats_mod.compute_stats(db, "route_id")
+    default = {"ascents": 0, "attempts": 0, "send_rate": None, "rating_avg": None, "rating_count": 0}
+    pairs = [(r, stats.get(r.id, default)) for r in routes]
+
+    key, reverse = stats_mod.sort_key(sort if sort in stats_mod.SORTS else "created_desc")
+    pairs.sort(key=key, reverse=reverse)
+    return [_route_out(r, st) for r, st in pairs]
 
 
 @router.post("", response_model=RouteOut, status_code=201)
@@ -79,12 +107,13 @@ def create_route(body: RouteIn, db: Session = Depends(get_db)):
     db.add(route)
     db.commit()
     db.refresh(route)
-    return route
+    return _route_out(route, stats_mod.stats_for(db, "route_id", route.id))
 
 
 @router.get("/{route_id}", response_model=RouteOut)
 def get_route(route_id: int, db: Session = Depends(get_db)):
-    return _get_route_or_404(route_id, db)
+    r = _get_route_or_404(route_id, db)
+    return _route_out(r, stats_mod.stats_for(db, "route_id", route_id))
 
 
 @router.put("/{route_id}", response_model=RouteOut)
@@ -94,7 +123,7 @@ def update_route(route_id: int, body: RouteIn, db: Session = Depends(get_db)):
         setattr(route, k, v)
     db.commit()
     db.refresh(route)
-    return route
+    return _route_out(route, stats_mod.stats_for(db, "route_id", route_id))
 
 
 @router.delete("/{route_id}", status_code=204)
@@ -120,6 +149,7 @@ def add_hold(route_id: int, body: HoldIn, db: Session = Depends(get_db)):
         col=body.col,
     )
     db.add(hold)
+    route.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(hold)
     return hold
@@ -132,6 +162,7 @@ def remove_last_hold(route_id: int, db: Session = Depends(get_db)):
         raise HTTPException(400, "No holds to remove")
     last = route.holds[-1]
     db.delete(last)
+    route.updated_at = datetime.utcnow()
     db.commit()
     # Turn off the LED for that hold
     leds.all_off()

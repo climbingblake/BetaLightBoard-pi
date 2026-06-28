@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.database import get_db
-from app.models import Send, User
+from app.models import Send, Attempt, User
 
 router = APIRouter(prefix="/api/sends", tags=["sends"])
 
@@ -48,6 +48,13 @@ def log_send(
         notes=body.notes,
     )
     db.add(send)
+    # A send implies an attempt, so the send-rate metric stays bounded at 100%.
+    db.add(Attempt(
+        user_id=current_user.id,
+        problem_id=body.problem_id,
+        route_id=body.route_id,
+        notes=body.notes,
+    ))
     db.commit()
     db.refresh(send)
     return send

@@ -12,6 +12,7 @@ export default function Generate() {
   const [name, setName] = useState("Random Problem");
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -36,7 +37,11 @@ export default function Generate() {
 
   return (
     <div className="flex h-[calc(100vh-49px)]">
-      <div className="flex-1 flex items-center justify-center bg-slate-950">
+      <div className="flex-1 relative flex items-center justify-center bg-slate-950">
+        <button
+          className="lg:hidden absolute top-3 right-3 z-10 p-2 bg-slate-800/80 rounded text-slate-300 hover:text-slate-100 text-lg leading-none"
+          onClick={() => setSidebarOpen(true)}
+        >☰</button>
         {leds.length > 0 ? (
           <BoardGrid
             rows={10}
@@ -51,7 +56,11 @@ export default function Generate() {
         )}
       </div>
 
-      <div className="w-64 border-l border-slate-800 bg-slate-900 hidden lg:flex flex-col gap-5 p-5">
+      {sidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-30 bg-black/60" onClick={() => setSidebarOpen(false)} />
+      )}
+      <div className={`w-64 border-l border-slate-800 bg-slate-900 flex-col gap-5 p-5 ${sidebarOpen ? "fixed inset-y-0 right-0 z-40 flex" : "hidden lg:flex"}`}>
+        <button className="lg:hidden self-end text-slate-500 hover:text-slate-300 text-xl leading-none mb-1" onClick={() => setSidebarOpen(false)}>✕</button>
         <h2 className="text-slate-100 font-semibold">Random Generator</h2>
 
         <div>

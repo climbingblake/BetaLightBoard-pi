@@ -1,21 +1,34 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProblemStore } from "@/store/useProblemStore";
+import { RatingDisplay } from "@/components/RatingStars";
+import { fmtSendRate, fmtRelative } from "@/lib/format";
+import type { SortKey } from "@/api";
 
 const GRADES = ["ALL", "V0","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","V11","V12"];
+
+const SORTS: { value: SortKey; label: string }[] = [
+  { value: "created_desc", label: "Newest" },
+  { value: "created_asc", label: "Oldest" },
+  { value: "rating_desc", label: "Top rated" },
+  { value: "ascents_desc", label: "Most ascents" },
+  { value: "send_rate_desc", label: "Highest send rate" },
+];
 
 export default function ProblemList() {
   const { problems, loading, fetchProblems, deleteProblem, loadToBoard } = useProblemStore();
   const [grade, setGrade] = useState("ALL");
   const [setter, setSetter] = useState("ALL");
+  const [sort, setSort] = useState<SortKey>("created_desc");
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchProblems({
       grade: grade !== "ALL" ? grade : undefined,
       setter: setter !== "ALL" ? setter : undefined,
+      sort,
     });
-  }, [grade, setter]);
+  }, [grade, setter, sort]);
 
   const setters = ["ALL", ...Array.from(new Set(problems.map((p) => p.setter ?? "").filter(Boolean)))];
 
@@ -64,6 +77,16 @@ export default function ProblemList() {
             {setters.map((s) => <option key={s}>{s}</option>)}
           </select>
         </div>
+        <div>
+          <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Sort</label>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="bg-slate-800 border border-slate-700 text-slate-200 rounded px-3 py-1.5 text-sm"
+          >
+            {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        </div>
       </div>
 
       {loading && <p className="text-slate-500">Loading...</p>}
@@ -84,10 +107,18 @@ export default function ProblemList() {
               )}
             </div>
             {p.setter && (
-              <p className="text-xs text-slate-500 mb-3">by {p.setter}</p>
+              <p className="text-xs text-slate-500 mb-1">by {p.setter}</p>
             )}
-            <div className="flex items-center gap-1 text-xs text-slate-600 mb-3">
+            <div className="mb-2">
+              <RatingDisplay avg={p.rating_avg} count={p.rating_count} />
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-600 mb-3 flex-wrap">
               <span>{p.leds.length} holds</span>
+              <span>·</span>
+              <span>{p.ascents} ascents</span>
+              <span>·</span>
+              <span title="send rate">{fmtSendRate(p.send_rate)}</span>
+              {p.updated_at && (<><span>·</span><span>{fmtRelative(p.updated_at)}</span></>)}
             </div>
             <div className="flex gap-2">
               <button
