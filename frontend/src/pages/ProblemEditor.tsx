@@ -25,7 +25,7 @@ export default function ProblemEditor() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [grade, setGrade] = useState("");
-  const [setter, setSetter] = useState("");
+  const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
   const [rows, setRows] = useState(10);
@@ -46,7 +46,7 @@ export default function ProblemEditor() {
     if (current) {
       setName(current.name ?? "");
       setGrade(current.grade ?? "");
-      setSetter(current.setter ?? "");
+      setDescription(current.description ?? "");
     }
   }, [current]);
 
@@ -68,7 +68,7 @@ export default function ProblemEditor() {
   async function handleSaveMeta() {
     if (!current) return;
     setSaving(true);
-    await updateProblem(current.id, { name, grade, setter });
+    await updateProblem(current.id, { name, grade, description });
     setSaving(false);
     setEditing(false);
   }
@@ -142,11 +142,12 @@ export default function ProblemEditor() {
                 <option value="">Grade</option>
                 {GRADES.map((g) => <option key={g}>{g}</option>)}
               </select>
-              <input
-                value={setter}
-                onChange={(e) => setSetter(e.target.value)}
-                placeholder="Setter"
-                className="bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm w-full"
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Description (optional)"
+                rows={2}
+                className="bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm w-full resize-none"
               />
               <div className="flex gap-2">
                 <button
@@ -166,14 +167,14 @@ export default function ProblemEditor() {
             </div>
           ) : (
             <div
-              className={liveEdit ? "cursor-pointer group" : ""}
-              onClick={liveEdit ? () => setEditing(true) : undefined}
+              className={canModify ? "cursor-pointer group" : ""}
+              onClick={canModify ? () => setEditing(true) : undefined}
             >
               <div className="flex items-start justify-between">
                 <h2 className="text-slate-100 font-semibold text-lg leading-tight">
                   {current.name || "Untitled"}
                 </h2>
-                {liveEdit && (
+                {canModify && (
                   <span className="text-xs text-slate-600 group-hover:text-slate-400 ml-2 mt-1">edit</span>
                 )}
               </div>
@@ -184,6 +185,9 @@ export default function ProblemEditor() {
               )}
               {current.setter && (
                 <p className="text-xs text-slate-600 mt-1">by {current.setter}</p>
+              )}
+              {current.description && (
+                <p className="text-xs text-slate-500 mt-2 whitespace-pre-line">{current.description}</p>
               )}
             </div>
           )}

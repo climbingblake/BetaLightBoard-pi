@@ -59,7 +59,6 @@ def _problem_out(p: Problem, st: dict) -> ProblemOut:
 class ProblemIn(BaseModel):
     name: str = ""
     description: str | None = None
-    setter: str | None = None
     grade: str | None = None
 
 
@@ -127,7 +126,12 @@ def create_problem(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    problem = Problem(**body.model_dump(), created_by=current_user.id, created_at=datetime.utcnow())
+    problem = Problem(
+        **body.model_dump(),
+        setter=current_user.username,
+        created_by=current_user.id,
+        created_at=datetime.utcnow(),
+    )
     db.add(problem)
     db.commit()
     db.refresh(problem)
@@ -285,7 +289,12 @@ def save_random(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    problem = Problem(name=body.name, created_by=current_user.id, created_at=datetime.utcnow())
+    problem = Problem(
+        name=body.name,
+        setter=current_user.username,
+        created_by=current_user.id,
+        created_at=datetime.utcnow(),
+    )
     db.add(problem)
     db.flush()
     for l in body.leds:
