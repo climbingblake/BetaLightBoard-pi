@@ -173,6 +173,11 @@ export default function SessionRunner() {
 
         <hr className="border-slate-800" />
 
+        <div>
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Rate this session</p>
+          <RatingInput value={myStars} onChange={rateSession} disabled={busy} />
+        </div>
+
         <div className="flex flex-col gap-2 mt-auto">
           <button
             onClick={logSend}
