@@ -115,16 +115,32 @@ cd frontend && npm run build
 cd .. && git add -A && git commit -m "your message" && git push
 ```
 
-The Pi pulls and restarts automatically. No SSH required after initial setup.
+The Pi pulls and restarts automatically — **no SSH required**, including for schema
+changes and new dependencies:
 
-If a new migration is included, SSH in once and run:
+- **Dependencies** install on every start via `scripts/start.sh` (the service
+  entrypoint), so a pushed `requirements.txt` change is picked up on the next
+  restart or reboot. The install is non-fatal: if the board is offline it boots
+  with whatever is already installed instead of failing.
+- **Schema** is reconciled in the app at startup (`init_db`): missing columns are
+  added and owner-less items are backfilled. Alembic migrations remain the formal
+  record but you do not need to run them by hand on the Pi.
+- **A reboot** does the same as the button: deps install, schema reconciles, app
+  starts.
+
+One-time step to adopt the self-updating entrypoint: after pulling the commit that
+adds `scripts/start.sh`, reinstall the unit once (it now points at the script, so
+this is the last unit edit you should need):
 
 ```bash
 cd /home/pi/BetaLightBoard-pi
-source .venv/bin/activate
-python3 -m alembic upgrade head
+sudo cp betalightboard.service /etc/systemd/system/
+sudo systemctl daemon-reload
 sudo systemctl restart betalightboard
 ```
+
+Not handled automatically: OS-level `apt` upgrades, and changes to the systemd
+unit itself. Those still need a one-time SSH session.
 
 ---
 

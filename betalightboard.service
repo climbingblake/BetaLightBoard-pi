@@ -1,11 +1,17 @@
 [Unit]
 Description=Beta Light Board
-After=network.target
+# Wait for real network so the start script can fetch dependency updates on boot.
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 User=root
 WorkingDirectory=/home/pi/BetaLightBoard-pi
-ExecStart=/home/pi/BetaLightBoard-pi/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 80 --workers 1
+# Entrypoint lives in the repo (scripts/start.sh) so the boot sequence —
+# dependency install + launch — updates via git/the update button without
+# ever needing to re-edit this unit. Allow time for pip on a slow first boot.
+ExecStart=/home/pi/BetaLightBoard-pi/scripts/start.sh
+TimeoutStartSec=300
 
 Restart=always
 RestartSec=5

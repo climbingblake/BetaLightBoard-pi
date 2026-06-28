@@ -195,7 +195,28 @@ export default function ProblemEditor() {
           </div>
         </div>
 
-        <hr className="border-slate-800" />
+
+        {/* Actions */}
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={handleLoad}
+            className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-sm transition-colors"
+          >
+            Load to Board
+          </button>
+          {liveEdit && (
+          <button
+            onClick={handleClear}
+            className="w-full py-2 hover:bg-red-900/30 text-slate-500 hover:text-red-400 rounded text-sm transition-colors"
+          >
+            Clear All
+          </button>
+          )}
+
+        </div>
+
+
+
 
         {/* Edit-mode toggle — owners/admins only. Off by default so a stray
             tap on the board can't alter holds. */}
@@ -220,45 +241,24 @@ export default function ProblemEditor() {
         {liveEdit ? (
           <ColorPicker selected={selectedColor} onChange={setSelectedColor} />
         ) : !canModify ? (
-          <p className="text-xs text-slate-600">View only — you can load and log this problem, but only its owner or an admin can edit it.</p>
+          ''
         ) : null}
-
-        <div className="text-xs text-slate-600">
-          {current.leds.length} holds placed
-        </div>
-
-        <hr className="border-slate-800" />
-
-        {/* Actions */}
-        <div className="flex flex-col gap-2">
-          <button
-            onClick={handleLoad}
-            className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-sm transition-colors"
-          >
-            Load to Board
-          </button>
-          {liveEdit && (
-          <button
-            onClick={handleClear}
-            className="w-full py-2 hover:bg-red-900/30 text-slate-500 hover:text-red-400 rounded text-sm transition-colors"
-          >
-            Clear All
-          </button>
-          )}
-          <button
-            onClick={() => navigate("/")}
-            className="w-full py-2 text-slate-600 hover:text-slate-400 rounded text-sm transition-colors"
-          >
-            ← Back
-          </button>
-        </div>
 
         {status && (
           <p className="text-xs text-green-500 text-center">{status}</p>
         )}
 
         <ActivityPanel problemId={current.id} onActivity={() => fetchProblem(current.id)} />
+
+        <button
+          onClick={() => navigate("/")}
+          className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-sm transition-colors"
+        >
+          ← Back
+        </button>
       </div>
+
     </div>
+
   );
 }

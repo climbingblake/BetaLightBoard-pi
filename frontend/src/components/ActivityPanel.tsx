@@ -101,7 +101,7 @@ export function ActivityPanel({ problemId, routeId, onActivity }: Props) {
 
   return (
     <>
-      <hr className="border-slate-800" />
+
 
       {/* Favorite */}
       <button
