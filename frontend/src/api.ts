@@ -132,6 +132,8 @@ export interface WorkoutSession {
   id: number;
   name: string;
   description: string | null;
+  created_by: number | null;
+  is_public: boolean;
   created_at: string | null;
   updated_at: string | null;
   item_count: number;
@@ -283,5 +285,7 @@ export const api = {
       req<WorkoutSession>("DELETE", `/sessions/${id}/items/${itemId}`),
     reorder: (id: number, orderedIds: number[]) =>
       req<WorkoutSession>("PUT", `/sessions/${id}/items/order`, { ordered_ids: orderedIds }),
+    setShared: (id: number, isPublic: boolean) =>
+      req<WorkoutSession>("PUT", `/sessions/${id}/share`, { public: isPublic }),
   },
 };

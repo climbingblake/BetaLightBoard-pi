@@ -34,6 +34,7 @@ def _reconcile_columns():
          "UPDATE routes SET updated_at = created_at WHERE updated_at IS NULL"),
         ("problems", "created_by", "ALTER TABLE problems ADD COLUMN created_by INTEGER REFERENCES users(id)", None),
         ("routes", "created_by", "ALTER TABLE routes ADD COLUMN created_by INTEGER REFERENCES users(id)", None),
+        ("sessions", "is_public", "ALTER TABLE sessions ADD COLUMN is_public BOOLEAN NOT NULL DEFAULT 0", None),
     ]
     insp = inspect(engine)
     existing_tables = set(insp.get_table_names())

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "@/api";
 import type { WorkoutSession, Problem, Route } from "@/api";
 import { useAuth } from "@/store/useAuth";
+import { canEdit } from "@/lib/perms";
 
 export default function SessionEditor() {
   const { id } = useParams<{ id: string }>();
@@ -29,10 +30,16 @@ export default function SessionEditor() {
     api.routes.list().then(setRoutes);
   }, [id]);
 
-  if (user && !user.is_admin) {
-    return <div className="p-6 text-slate-500">Only admins can edit sessions.</div>;
-  }
   if (!session) return <div className="p-6 text-slate-500">Loading...</div>;
+  if (!canEdit(user, session.created_by)) {
+    return <div className="p-6 text-slate-500">You can only edit sessions you created.</div>;
+  }
+
+  async function toggleShare() {
+    if (!session) return;
+    const s = await api.sessions.setShared(session.id, !session.is_public);
+    setSession((prev) => prev ? { ...prev, is_public: s.is_public } : prev);
+  }
 
   async function saveMeta() {
     if (!session) return;
@@ -90,6 +97,26 @@ export default function SessionEditor() {
         <div className="flex items-center gap-3">
           <button onClick={saveMeta} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm transition-colors">Save</button>
           {savedMsg && <span className="text-xs text-green-500">{savedMsg}</span>}
+        </div>
+        {/* Sharing — admins only. Owners see read-only status. */}
+        <div className="flex items-center gap-3 pt-2 border-t border-slate-800">
+          <span className="text-xs text-slate-500">
+            {session.is_public ? "Public — visible to everyone" : "Private — only you and admins"}
+          </span>
+          {user?.is_admin ? (
+            <button
+              onClick={toggleShare}
+              className={`ml-auto px-3 py-1.5 rounded text-xs transition-colors ${
+                session.is_public
+                  ? "bg-green-900/40 text-green-300 hover:bg-green-900/60"
+                  : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+              }`}
+            >
+              {session.is_public ? "Make private" : "Share (make public)"}
+            </button>
+          ) : (
+            <span className="ml-auto text-xs text-slate-600">Ask an admin to share it</span>
+          )}
         </div>
       </div>
 
