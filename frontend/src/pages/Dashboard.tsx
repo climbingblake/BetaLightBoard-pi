@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/api";
-import type { DashboardData } from "@/api";
-import { Sparkline, BarChart, StackedArea } from "@/components/Charts";
+import type { DashboardData, PyramidData } from "@/api";
+import { Sparkline, BarChart, StackedArea, PyramidBars } from "@/components/Charts";
 import { RatingDisplay } from "@/components/RatingStars";
 import { fmtSendRate, fmtRelative } from "@/lib/format";
 import { useAuth } from "@/store/useAuth";
@@ -90,6 +90,9 @@ export default function Dashboard() {
           <p className="text-sm text-slate-600">No graded problems yet.</p>
         )}
       </Card>
+
+      {/* Workout pyramid */}
+      <PyramidCard />
 
       {/* Sends over time + recent activity */}
       <div className="grid lg:grid-cols-3 gap-4 mb-4">
@@ -190,6 +193,63 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+type Period = "day" | "week" | "history";
+const PERIOD_LABEL: Record<Period, string> = { day: "Today", week: "This week", history: "All time" };
+
+function PyramidCard() {
+  const [data, setData] = useState<PyramidData | null>(null);
+  const [period, setPeriod] = useState<Period>("week");
+  const [err, setErr] = useState(false);
+
+  useEffect(() => {
+    api.dashboard.pyramid().then(setData).catch(() => setErr(true));
+  }, []);
+
+  const series = data ? data[period] : [];
+  const totalSends = series.reduce((acc, p) => acc + p.sends, 0);
+  const hardest = [...series].reverse().find((p) => p.sends > 0)?.grade ?? "—";
+
+  const toggle = (
+    <div className="flex rounded-md bg-slate-800 p-0.5 text-xs">
+      {(["day", "week", "history"] as Period[]).map((p) => (
+        <button
+          key={p}
+          onClick={() => setPeriod(p)}
+          className={`px-2.5 py-1 rounded transition-colors ${
+            period === p ? "bg-slate-700 text-slate-100" : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          {p === "history" ? "History" : p === "week" ? "Week" : "Day"}
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <Card title="Workout pyramid" right={toggle} className="mb-4">
+      {err ? (
+        <p className="text-sm text-slate-600">Couldn’t load your pyramid.</p>
+      ) : !data ? (
+        <p className="text-sm text-slate-600">Loading…</p>
+      ) : (
+        <>
+          <PyramidBars data={series.map((p) => ({ label: p.grade, value: p.sends }))} color={ACCENT.green} />
+          <div className="mt-3 flex gap-6 text-sm">
+            <div>
+              <span className="text-slate-100 font-semibold">{totalSends}</span>{" "}
+              <span className="text-slate-500">sends · {PERIOD_LABEL[period]}</span>
+            </div>
+            <div>
+              <span className="text-slate-100 font-semibold">{hardest}</span>{" "}
+              <span className="text-slate-500">hardest sent</span>
+            </div>
+          </div>
+        </>
+      )}
+    </Card>
   );
 }
 

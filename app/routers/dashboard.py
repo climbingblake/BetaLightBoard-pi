@@ -192,3 +192,53 @@ def dashboard(db: DbSession = Depends(get_db), user: User = Depends(get_current_
         "me": me,
         "leaderboard": leaderboard,
     }
+
+
+# Trailing-window lengths (days) for the workout pyramid. None == all time.
+# Matches the dashboard's existing "last 7 days == this week" convention.
+PYRAMID_WINDOWS = {"day": 1, "week": 7, "history": None}
+
+
+@router.get("/pyramid")
+def pyramid(db: DbSession = Depends(get_db), user: User = Depends(get_current_user)):
+    """Signed-in user's sends bucketed by V-grade, for day / week / history.
+
+    Only problem sends count (routes carry no grade). All three periods share a
+    single grade axis (V0..hardest ever sent) so toggling doesn't reflow the
+    chart. Empty arrays when the user has no graded sends.
+    """
+    now = datetime.utcnow()
+    rows = (
+        db.query(Send.timestamp, Problem.grade)
+        .join(Problem, Send.problem_id == Problem.id)
+        .filter(Send.user_id == user.id)
+        .all()
+    )
+
+    def counts(cutoff: datetime | None) -> dict[int, int]:
+        out: dict[int, int] = {}
+        for ts, grade in rows:
+            if cutoff is not None and (ts is None or ts < cutoff):
+                continue
+            n = _grade_num(grade)
+            if n is not None:
+                out[n] = out.get(n, 0) + 1
+        return out
+
+    history = counts(None)
+    if not history:
+        return {"day": [], "week": [], "history": [], "max_grade": None}
+
+    hi = max(history)
+
+    def series(days: int | None) -> list[dict]:
+        cutoff = None if days is None else now - timedelta(days=days)
+        c = counts(cutoff)
+        return [{"grade": f"V{n}", "sends": c.get(n, 0)} for n in range(hi + 1)]
+
+    return {
+        "day": series(PYRAMID_WINDOWS["day"]),
+        "week": series(PYRAMID_WINDOWS["week"]),
+        "history": series(PYRAMID_WINDOWS["history"]),
+        "max_grade": f"V{hi}",
+    }

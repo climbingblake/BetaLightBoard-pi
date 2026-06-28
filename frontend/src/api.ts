@@ -164,11 +164,20 @@ export interface DashboardData {
   leaderboard: { username: string; sends: number }[];
 }
 
+export interface PyramidPoint { grade: string; sends: number }
+export interface PyramidData {
+  day: PyramidPoint[];
+  week: PyramidPoint[];
+  history: PyramidPoint[];
+  max_grade: string | null;
+}
+
 // ---- Problems ----
 
 export const api = {
   dashboard: {
     get: () => req<DashboardData>("GET", "/dashboard"),
+    pyramid: () => req<PyramidData>("GET", "/dashboard/pyramid"),
   },
 
   problems: {
