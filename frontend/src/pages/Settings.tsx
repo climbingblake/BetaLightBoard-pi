@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "@/api";
+import { api, downloadResponse } from "@/api";
 import type { Setting, User } from "@/api";
 import { useAuth } from "@/store/useAuth";
 
@@ -95,6 +95,33 @@ export default function Settings() {
     if (!confirm("Delete this user and all their activity data?")) return;
     await api.auth.deleteUser(id);
     setUsers((u) => u.filter((x) => x.id !== id));
+  }
+
+  const [exporting, setExporting] = useState<"" | "content" | "db">("");
+  const [exportErr, setExportErr] = useState("");
+
+  async function handleExportContent() {
+    setExportErr("");
+    setExporting("content");
+    try {
+      await downloadResponse(await api.backup.content(), "betalightboard-content.json");
+    } catch (e) {
+      setExportErr(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setExporting("");
+    }
+  }
+
+  async function handleDownloadDb() {
+    setExportErr("");
+    setExporting("db");
+    try {
+      await downloadResponse(await api.backup.database(), "betalightboard-backup.db");
+    } catch (e) {
+      setExportErr(e instanceof Error ? e.message : "Backup failed");
+    } finally {
+      setExporting("");
+    }
   }
 
   const LABELS: Record<string, string> = {
@@ -200,6 +227,36 @@ export default function Settings() {
           <hr className="border-slate-800 mb-8" />
         </>
       )}
+
+      <div className="mb-8">
+        <h2 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-2">Backup &amp; Export</h2>
+        <p className="text-xs text-slate-600 mb-4">
+          {currentUser?.is_admin
+            ? "Export problems, routes & sessions as JSON, or download a full database snapshot."
+            : "Export your problems, routes & sessions as JSON so you don't lose them."}
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={handleExportContent}
+            disabled={exporting !== ""}
+            className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {exporting === "content" ? "Exporting…" : "Export content (JSON)"}
+          </button>
+          {currentUser?.is_admin && (
+            <button
+              onClick={handleDownloadDb}
+              disabled={exporting !== ""}
+              className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              {exporting === "db" ? "Preparing…" : "Download full backup (.db)"}
+            </button>
+          )}
+        </div>
+        {exportErr && <p className="text-red-400 text-xs mt-3">{exportErr}</p>}
+      </div>
+
+      <hr className="border-slate-800 mb-8" />
 
       <div>
         <h2 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-4">System</h2>

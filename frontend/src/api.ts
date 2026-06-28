@@ -304,4 +304,27 @@ export const api = {
     setShared: (id: number, isPublic: boolean) =>
       req<WorkoutSession>("PUT", `/sessions/${id}/share`, { public: isPublic }),
   },
+
+  backup: {
+    // Return the raw Response so the caller can stream a file download.
+    database: () => fetch(`${BASE}/backup/database`, { credentials: "include" }),
+    content:  () => fetch(`${BASE}/backup/content`,  { credentials: "include" }),
+  },
 };
+
+/** Trigger a browser download from a fetch Response, honoring its filename. */
+export async function downloadResponse(res: Response, fallback: string) {
+  if (!res.ok) throw new Error((await res.text()) || `HTTP ${res.status}`);
+  const blob = await res.blob();
+  const cd = res.headers.get("Content-Disposition") || "";
+  const match = cd.match(/filename="?([^"]+)"?/);
+  const name = match ? match[1] : fallback;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
