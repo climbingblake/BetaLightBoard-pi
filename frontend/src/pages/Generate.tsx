@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/api";
 import type { Led } from "@/api";
@@ -13,6 +13,17 @@ export default function Generate() {
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [rows, setRows] = useState(10);
+  const [cols, setCols] = useState(20);
+
+  useEffect(() => {
+    api.settings.list().then((s) => {
+      const r = s.find((x) => x.key === "NUMB_ROWS")?.value;
+      const c = s.find((x) => x.key === "NUMB_COLS")?.value;
+      if (r) setRows(Number(r));
+      if (c) setCols(Number(c));
+    });
+  }, []);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -44,8 +55,8 @@ export default function Generate() {
         >☰</button>
         {leds.length > 0 ? (
           <BoardGrid
-            rows={10}
-            cols={10}
+            rows={rows}
+            cols={cols}
             leds={leds}
             selectedColor=""
             onCellClick={() => {}}

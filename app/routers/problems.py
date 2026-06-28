@@ -80,7 +80,7 @@ class SaveRandomIn(BaseModel):
 
 def _num_cols(db: Session) -> int:
     s = db.query(Setting).filter(Setting.key == "NUMB_COLS").first()
-    return int(s.value) if s else 10
+    return int(s.value) if s else 20
 
 
 def _num_rows(db: Session) -> int:
@@ -134,39 +134,114 @@ def create_problem(
     return _problem_out(problem, stats_mod.stats_for(db, "problem_id", problem.id))
 
 
+# Max per-axis distance between consecutive holds (Chebyshev "3 holds apart").
+REACH = 3
+FOOT_SPREAD = REACH + 2  # feet wander wider than the reach limit
+
+
+def _build_random_problem(num_rows: int, num_cols: int, hands: int, feet: int) -> list[Led]:
+    """Generate a bottom-to-top problem as a reachable chain of holds.
+
+    Row 0 is the top. A problem starts 3-4 rows up from the bottom and climbs to
+    the top (row 0 or 1). Consecutive hand holds stay within REACH on each axis;
+    a zero vertical step is a sideways move. Feet hang below the lower hand holds
+    with wide lateral variance and are always fewer than the hands.
+    """
+    used: set[tuple[int, int]] = set()
+
+    def free(row: int, col: int) -> bool:
+        return 0 <= row < num_rows and 0 <= col < num_cols and (row, col) not in used
+
+    def place(row: int, col: int, rgb: str) -> Led:
+        used.add((row, col))
+        return Led(row=row, col=col, rgb=rgb, problem_id=0)
+
+    holds: list[Led] = []
+
+    # --- start: 3rd or 4th row from the bottom, 1 or 2 holds ---
+    start_row = max(1, min(num_rows - rnd.choice([3, 4]), num_rows - 1))
+    start_col = rnd.randint(0, num_cols - 1)
+    holds.append(place(start_row, start_col, "green"))
+    if rnd.random() < 0.5:
+        for _ in range(20):
+            c2 = start_col + rnd.randint(-REACH, REACH)
+            if c2 != start_col and free(start_row, c2):
+                holds.append(place(start_row, c2, "green"))
+                break
+
+    # --- finish: top or second row ---
+    finish_row = min(rnd.choice([0, 1]), start_row - 1)
+    span = start_row - finish_row  # rows to climb (> 0)
+
+    # Honor the requested count, but guarantee the top is reachable in <=REACH steps.
+    min_hands = -(-span // REACH)  # ceil(span / REACH)
+    hands = max(hands, min_hands, 1)
+
+    # Spread the climb across `hands` upward segments (each 0..REACH) summing to
+    # span. Distributing one row at a time yields varied steps and occasional
+    # zeros (sideways moves).
+    steps = [0] * hands
+    for _ in range(span):
+        candidates = [i for i in range(hands) if steps[i] < REACH]
+        steps[rnd.choice(candidates)] += 1
+
+    # --- hand chain from the start anchor up to the finish ---
+    prev_row, prev_col = start_row, start_col
+    hdir = rnd.choice([-1, 1])  # lateral momentum, so the route snakes and spreads
+    for i, up in enumerate(steps):
+        new_row = prev_row - up
+        is_finish = i == len(steps) - 1
+
+        lo, hi = max(0, prev_col - REACH), min(num_cols - 1, prev_col + REACH)
+        in_reach = [c for c in range(lo, hi + 1)
+                    if free(new_row, c) and not (up == 0 and c == prev_col)]
+        if in_reach:
+            forward = [c for c in in_reach if (c - prev_col) * hdir >= 0]
+            if up == 0:
+                # sideways: step out in the momentum direction to avoid clustering
+                pool = forward or in_reach
+                new_col = max(pool, key=lambda c: abs(c - prev_col))
+            else:
+                new_col = rnd.choice(forward or in_reach)
+            if new_col != prev_col:
+                hdir = 1 if new_col > prev_col else -1
+        elif is_finish:
+            # Guarantee a finish hold exists even if the reach window is full.
+            anywhere = [c for c in range(num_cols) if free(new_row, c)]
+            if not anywhere:
+                continue
+            new_col = min(anywhere, key=lambda c: abs(c - prev_col))
+        else:
+            continue  # crowded row, no in-reach spot; leave the chain a hold shorter
+
+        holds.append(place(new_row, new_col, "red" if is_finish else "blue"))
+        prev_row, prev_col = new_row, new_col
+
+    # --- feet: below the lower hand holds, wide variance, fewer than hands ---
+    hand_holds = [h for h in holds if h.rgb in ("blue", "red")]
+    n_feet = max(0, min(feet, len(hand_holds) - 1))
+    lower = sorted(hand_holds, key=lambda h: h.row, reverse=True)[: max(1, len(hand_holds) // 2)]
+    placed = 0
+    attempts = 0
+    while placed < n_feet and attempts < n_feet * 40 + 40:
+        attempts += 1
+        base = rnd.choice(lower)
+        frow = base.row + rnd.choice([1, 2])
+        fcol = max(0, min(num_cols - 1, base.col + rnd.randint(-FOOT_SPREAD, FOOT_SPREAD)))
+        if free(frow, fcol):
+            holds.append(place(frow, fcol, "purple"))
+            placed += 1
+
+    return holds
+
+
 @router.get("/generate", response_model=list[LedOut])
 def generate_random(hands: int = 7, feet: int = 3, db: Session = Depends(get_db)):
     num_cols = _num_cols(db)
     num_rows = _num_rows(db)
 
     leds.all_off()
-
-    generated: list[Led] = []
-    used: set[tuple[int, int]] = set()
-
-    def unique_pos(row_range, col_range) -> tuple[int, int]:
-        for _ in range(100):
-            r, c = rnd.randint(*row_range), rnd.randint(*col_range)
-            if (r, c) not in used:
-                used.add((r, c))
-                return r, c
-        raise HTTPException(500, "Could not place all holds without collision")
-
-    # Start holds (bottom row)
-    for _ in range(2):
-        r, c = unique_pos((num_rows - 1, num_rows - 1), (0, num_cols - 1))
-        generated.append(Led(row=r, col=c, rgb="green", problem_id=0))
-
-    # Hand holds
-    for _ in range(hands):
-        r, c = unique_pos((1, num_rows - 2), (0, num_cols - 1))
-        generated.append(Led(row=r, col=c, rgb="blue", problem_id=0))
-
-    # Foot holds
-    for _ in range(feet):
-        r, c = unique_pos((num_rows - 1, num_rows - 1), (0, num_cols - 1))
-        generated.append(Led(row=r, col=c, rgb="purple", problem_id=0))
-
+    generated = _build_random_problem(num_rows, num_cols, hands, feet)
     for led in generated:
         leds.set_led(led.row, led.col, led.rgb, num_cols)
 
