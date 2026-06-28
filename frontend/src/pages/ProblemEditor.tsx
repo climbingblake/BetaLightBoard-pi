@@ -8,6 +8,8 @@ import type { Led } from "@/api";
 import { ActivityPanel } from "@/components/ActivityPanel";
 import { RatingDisplay } from "@/components/RatingStars";
 import { fmtSendRate } from "@/lib/format";
+import { canEdit } from "@/lib/perms";
+import { useAuth } from "@/store/useAuth";
 
 const GRADES = ["V0","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","V11","V12"];
 
@@ -16,6 +18,7 @@ export default function ProblemEditor() {
   const navigate = useNavigate();
   const { current, loading, fetchProblem, updateProblem, addLed, updateLed, deleteLed, loadToBoard, clearBoard } =
     useProblemStore();
+  const { user } = useAuth();
 
   const [selectedColor, setSelectedColor] = useState("blue");
   const [editing, setEditing] = useState(false);
@@ -86,6 +89,8 @@ export default function ProblemEditor() {
   if (loading) return <div className="p-6 text-slate-500">Loading...</div>;
   if (!current) return <div className="p-6 text-slate-500">Problem not found.</div>;
 
+  const editable = canEdit(user, current.created_by);
+
   return (
     <div className="flex h-[calc(100vh-49px)]">
       {/* Board */}
@@ -100,6 +105,7 @@ export default function ProblemEditor() {
           leds={current.leds}
           selectedColor={selectedColor}
           onCellClick={handleCellClick}
+          readOnly={!editable}
         />
       </div>
 
@@ -151,14 +157,16 @@ export default function ProblemEditor() {
             </div>
           ) : (
             <div
-              className="cursor-pointer group"
-              onClick={() => setEditing(true)}
+              className={editable ? "cursor-pointer group" : ""}
+              onClick={editable ? () => setEditing(true) : undefined}
             >
               <div className="flex items-start justify-between">
                 <h2 className="text-slate-100 font-semibold text-lg leading-tight">
                   {current.name || "Untitled"}
                 </h2>
-                <span className="text-xs text-slate-600 group-hover:text-slate-400 ml-2 mt-1">edit</span>
+                {editable && (
+                  <span className="text-xs text-slate-600 group-hover:text-slate-400 ml-2 mt-1">edit</span>
+                )}
               </div>
               {current.grade && (
                 <span className="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded">
@@ -180,8 +188,12 @@ export default function ProblemEditor() {
 
         <hr className="border-slate-800" />
 
-        {/* Color picker */}
-        <ColorPicker selected={selectedColor} onChange={setSelectedColor} />
+        {/* Color picker — owners/admins only */}
+        {editable ? (
+          <ColorPicker selected={selectedColor} onChange={setSelectedColor} />
+        ) : (
+          <p className="text-xs text-slate-600">View only — you can load and log this problem, but only its owner or an admin can edit it.</p>
+        )}
 
         <div className="text-xs text-slate-600">
           {current.leds.length} holds placed
@@ -197,12 +209,14 @@ export default function ProblemEditor() {
           >
             Load to Board
           </button>
+          {editable && (
           <button
             onClick={handleClear}
             className="w-full py-2 hover:bg-red-900/30 text-slate-500 hover:text-red-400 rounded text-sm transition-colors"
           >
             Clear All
           </button>
+          )}
           <button
             onClick={() => navigate("/")}
             className="w-full py-2 text-slate-600 hover:text-slate-400 rounded text-sm transition-colors"

@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Problem, Led, Setting
+from app.models import Problem, Led, Setting, User
+from app.auth import get_current_user, require_can_edit
 from app import led_controller as leds
 from app import stats as stats_mod
 
@@ -32,6 +33,7 @@ class ProblemOut(BaseModel):
     description: str | None
     setter: str | None
     grade: str | None
+    created_by: int | None = None
     created_at: datetime
     updated_at: datetime | None = None
     leds: list[LedOut] = []
@@ -120,8 +122,12 @@ def list_problems(
 
 
 @router.post("", response_model=ProblemOut, status_code=201)
-def create_problem(body: ProblemIn, db: Session = Depends(get_db)):
-    problem = Problem(**body.model_dump(), created_at=datetime.utcnow())
+def create_problem(
+    body: ProblemIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    problem = Problem(**body.model_dump(), created_by=current_user.id, created_at=datetime.utcnow())
     db.add(problem)
     db.commit()
     db.refresh(problem)
@@ -169,8 +175,12 @@ def generate_random(hands: int = 7, feet: int = 3, db: Session = Depends(get_db)
 
 
 @router.post("/save_random", response_model=ProblemOut, status_code=201)
-def save_random(body: SaveRandomIn, db: Session = Depends(get_db)):
-    problem = Problem(name=body.name, created_at=datetime.utcnow())
+def save_random(
+    body: SaveRandomIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    problem = Problem(name=body.name, created_by=current_user.id, created_at=datetime.utcnow())
     db.add(problem)
     db.flush()
     for l in body.leds:
@@ -189,10 +199,16 @@ def get_problem(problem_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{problem_id}", response_model=ProblemOut)
-def update_problem(problem_id: int, body: ProblemIn, db: Session = Depends(get_db)):
+def update_problem(
+    problem_id: int,
+    body: ProblemIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     p = db.get(Problem, problem_id)
     if not p:
         raise HTTPException(404, "Problem not found")
+    require_can_edit(current_user, p.created_by)
     for k, v in body.model_dump(exclude_unset=True).items():
         setattr(p, k, v)
     db.commit()
@@ -201,10 +217,15 @@ def update_problem(problem_id: int, body: ProblemIn, db: Session = Depends(get_d
 
 
 @router.delete("/{problem_id}", status_code=204)
-def delete_problem(problem_id: int, db: Session = Depends(get_db)):
+def delete_problem(
+    problem_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     p = db.get(Problem, problem_id)
     if not p:
         raise HTTPException(404, "Problem not found")
+    require_can_edit(current_user, p.created_by)
     db.delete(p)
     db.commit()
     leds.all_off()
@@ -219,10 +240,15 @@ def load_to_board(problem_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{problem_id}/clear", status_code=204)
-def clear_leds(problem_id: int, db: Session = Depends(get_db)):
+def clear_leds(
+    problem_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     p = db.get(Problem, problem_id)
     if not p:
         raise HTTPException(404, "Problem not found")
+    require_can_edit(current_user, p.created_by)
     for led in p.leds:
         db.delete(led)
     p.updated_at = datetime.utcnow()

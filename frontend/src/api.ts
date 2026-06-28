@@ -62,6 +62,7 @@ export interface Problem {
   description: string | null;
   setter: string | null;
   grade: string | null;
+  created_by: number | null;
   created_at: string;
   updated_at: string | null;
   leds: Led[];
@@ -91,6 +92,7 @@ export interface Route {
   duration: number;
   number_shown: number;
   repeat: boolean;
+  created_by: number | null;
   created_at: string;
   updated_at: string | null;
   holds: RouteHold[];

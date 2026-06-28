@@ -26,6 +26,7 @@ class Problem(Base):
     description: Mapped[str | None] = mapped_column(Text)
     setter: Mapped[str | None] = mapped_column(String(255))
     grade: Mapped[str | None] = mapped_column(String(10))
+    created_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -65,6 +66,7 @@ class Route(Base):
     duration: Mapped[float] = mapped_column(Float, nullable=False, default=3.0)
     number_shown: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     repeat: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow

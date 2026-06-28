@@ -5,6 +5,8 @@ import type { Route, RouteHold } from "@/api";
 import { ActivityPanel } from "@/components/ActivityPanel";
 import { RatingDisplay } from "@/components/RatingStars";
 import { fmtSendRate } from "@/lib/format";
+import { canEdit } from "@/lib/perms";
+import { useAuth } from "@/store/useAuth";
 
 // Violet → Orange gradient across all holds (first = violet, last = orange)
 function holdColor(index: number, total: number): string {
@@ -18,6 +20,7 @@ function holdColor(index: number, total: number): string {
 export default function RouteShow() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [route, setRoute] = useState<Route | null>(null);
   const [rows, setRows] = useState(10);
   const [cols, setCols] = useState(20);
@@ -221,12 +224,14 @@ export default function RouteShow() {
               ■ Stop
             </button>
           )}
-          <button
-            onClick={() => navigate(`/routes/${route.id}/edit`)}
-            className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm transition-colors"
-          >
-            Edit Route
-          </button>
+          {canEdit(user, route.created_by) && (
+            <button
+              onClick={() => navigate(`/routes/${route.id}/edit`)}
+              className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm transition-colors"
+            >
+              Edit Route
+            </button>
+          )}
           <button
             onClick={() => navigate("/routes")}
             className="w-full py-2 text-slate-600 hover:text-slate-400 rounded text-sm transition-colors"

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "@/api";
 import type { Route, RouteHold } from "@/api";
+import { canEdit } from "@/lib/perms";
+import { useAuth } from "@/store/useAuth";
 
 // Violet → Orange gradient (first hold = violet, last = orange)
 function holdColor(index: number, total: number): string {
@@ -14,6 +16,7 @@ function holdColor(index: number, total: number): string {
 export default function RouteEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [route, setRoute] = useState<Route | null>(null);
   const [rows, setRows] = useState(10);
@@ -38,6 +41,11 @@ export default function RouteEditor() {
   useEffect(() => {
     if (!id) return;
     api.routes.get(Number(id)).then((r) => {
+      // Non-owners can't edit; bounce them to the read-only view.
+      if (!canEdit(user, r.created_by)) {
+        navigate(`/routes/${id}`, { replace: true });
+        return;
+      }
       setRoute(r);
       setName(r.name ?? "");
       setDescription(r.description ?? "");

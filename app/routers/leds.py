@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Led, Problem, Setting
+from app.models import Led, Problem, Setting, User
+from app.auth import get_current_user, require_can_edit
 from app import led_controller as lc
 
 router = APIRouter(prefix="/api", tags=["leds"])
@@ -34,10 +35,16 @@ def _num_cols(db: Session) -> int:
 
 
 @router.post("/problems/{problem_id}/leds", response_model=LedOut, status_code=201)
-def add_led(problem_id: int, body: LedIn, db: Session = Depends(get_db)):
+def add_led(
+    problem_id: int,
+    body: LedIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     p = db.get(Problem, problem_id)
     if not p:
         raise HTTPException(404, "Problem not found")
+    require_can_edit(current_user, p.created_by)
     led = Led(problem_id=problem_id, row=body.row, col=body.col, rgb=body.rgb)
     db.add(led)
     p.updated_at = datetime.utcnow()
@@ -48,10 +55,16 @@ def add_led(problem_id: int, body: LedIn, db: Session = Depends(get_db)):
 
 
 @router.put("/leds/{led_id}", response_model=LedOut)
-def update_led(led_id: int, body: LedColorIn, db: Session = Depends(get_db)):
+def update_led(
+    led_id: int,
+    body: LedColorIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     led = db.get(Led, led_id)
     if not led:
         raise HTTPException(404, "LED not found")
+    require_can_edit(current_user, led.problem.created_by if led.problem else None)
     led.rgb = body.rgb
     if led.problem:
         led.problem.updated_at = datetime.utcnow()
@@ -62,10 +75,15 @@ def update_led(led_id: int, body: LedColorIn, db: Session = Depends(get_db)):
 
 
 @router.delete("/leds/{led_id}", status_code=204)
-def delete_led(led_id: int, db: Session = Depends(get_db)):
+def delete_led(
+    led_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     led = db.get(Led, led_id)
     if not led:
         raise HTTPException(404, "LED not found")
+    require_can_edit(current_user, led.problem.created_by if led.problem else None)
     row, col = led.row, led.col
     if led.problem:
         led.problem.updated_at = datetime.utcnow()

@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useProblemStore } from "@/store/useProblemStore";
 import { RatingDisplay } from "@/components/RatingStars";
 import { fmtSendRate, fmtRelative } from "@/lib/format";
+import { canEdit } from "@/lib/perms";
+import { useAuth } from "@/store/useAuth";
+import { api } from "@/api";
 import type { SortKey } from "@/api";
 
 const GRADES = ["ALL", "V0","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","V11","V12"];
@@ -17,9 +20,12 @@ const SORTS: { value: SortKey; label: string }[] = [
 
 export default function ProblemList() {
   const { problems, loading, fetchProblems, deleteProblem, loadToBoard } = useProblemStore();
+  const { user } = useAuth();
   const [grade, setGrade] = useState("ALL");
   const [setter, setSetter] = useState("ALL");
   const [sort, setSort] = useState<SortKey>("created_desc");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [favIds, setFavIds] = useState<Set<number>>(new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -30,7 +36,14 @@ export default function ProblemList() {
     });
   }, [grade, setter, sort]);
 
+  useEffect(() => {
+    api.favorites.list("problem")
+      .then((favs) => setFavIds(new Set(favs.map((f) => f.problem_id!).filter((x) => x != null))))
+      .catch(() => {});
+  }, []);
+
   const setters = ["ALL", ...Array.from(new Set(problems.map((p) => p.setter ?? "").filter(Boolean)))];
+  const visible = favoritesOnly ? problems.filter((p) => favIds.has(p.id)) : problems;
 
   async function handleDelete(id: number, e: React.MouseEvent) {
     e.stopPropagation();
@@ -87,12 +100,25 @@ export default function ProblemList() {
             {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
         </div>
+        <div className="flex items-end">
+          <button
+            onClick={() => setFavoritesOnly((v) => !v)}
+            className={`px-3 py-1.5 rounded text-sm transition-colors flex items-center gap-1.5 border ${
+              favoritesOnly
+                ? "bg-yellow-600/20 border-yellow-700/50 text-yellow-400"
+                : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <span>{favoritesOnly ? "★" : "☆"}</span>
+            <span>Favorites</span>
+          </button>
+        </div>
       </div>
 
       {loading && <p className="text-slate-500">Loading...</p>}
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {problems.map((p) => (
+        {visible.map((p) => (
           <div
             key={p.id}
             onClick={() => navigate(`/problems/${p.id}`)}
@@ -127,20 +153,24 @@ export default function ProblemList() {
               >
                 Load
               </button>
-              <button
-                onClick={(e) => handleDelete(p.id, e)}
-                className="py-1 px-2 hover:bg-red-900/40 text-slate-500 hover:text-red-400 rounded text-xs transition-colors"
-              >
-                ✕
-              </button>
+              {canEdit(user, p.created_by) && (
+                <button
+                  onClick={(e) => handleDelete(p.id, e)}
+                  className="py-1 px-2 hover:bg-red-900/40 text-slate-500 hover:text-red-400 rounded text-xs transition-colors"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
         ))}
       </div>
 
-      {!loading && problems.length === 0 && (
+      {!loading && visible.length === 0 && (
         <p className="text-slate-600 text-center mt-16">
-          No problems yet. Create one or generate a random layout.
+          {favoritesOnly
+            ? "No favorited problems yet. Tap the star on a problem to add one."
+            : "No problems yet. Create one or generate a random layout."}
         </p>
       )}
     </div>

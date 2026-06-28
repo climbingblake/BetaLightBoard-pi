@@ -53,3 +53,16 @@ def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
     if not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin required")
     return current_user
+
+
+def can_edit(user: User, created_by: Optional[int]) -> bool:
+    """Admins may edit anything; otherwise only the creator may."""
+    return bool(user.is_admin) or (created_by is not None and created_by == user.id)
+
+
+def require_can_edit(user: User, created_by: Optional[int]) -> None:
+    if not can_edit(user, created_by):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the owner or an admin can modify this",
+        )

@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Route, RouteHold, Setting
+from app.models import Route, RouteHold, Setting, User
+from app.auth import get_current_user, require_can_edit
 from app import led_controller as leds
 from app import stats as stats_mod
 
@@ -30,6 +31,7 @@ class RouteOut(BaseModel):
     duration: float
     number_shown: int
     repeat: bool
+    created_by: int | None = None
     created_at: datetime
     updated_at: datetime | None = None
     holds: list[RouteHoldOut] = []
@@ -102,8 +104,12 @@ def list_routes(q: str | None = None, sort: str = "created_desc", db: Session = 
 
 
 @router.post("", response_model=RouteOut, status_code=201)
-def create_route(body: RouteIn, db: Session = Depends(get_db)):
-    route = Route(**body.model_dump(), created_at=datetime.utcnow())
+def create_route(
+    body: RouteIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    route = Route(**body.model_dump(), created_by=current_user.id, created_at=datetime.utcnow())
     db.add(route)
     db.commit()
     db.refresh(route)
@@ -117,8 +123,14 @@ def get_route(route_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{route_id}", response_model=RouteOut)
-def update_route(route_id: int, body: RouteIn, db: Session = Depends(get_db)):
+def update_route(
+    route_id: int,
+    body: RouteIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     route = _get_route_or_404(route_id, db)
+    require_can_edit(current_user, route.created_by)
     for k, v in body.model_dump(exclude_unset=True).items():
         setattr(route, k, v)
     db.commit()
@@ -127,8 +139,13 @@ def update_route(route_id: int, body: RouteIn, db: Session = Depends(get_db)):
 
 
 @router.delete("/{route_id}", status_code=204)
-def delete_route(route_id: int, db: Session = Depends(get_db)):
+def delete_route(
+    route_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     route = _get_route_or_404(route_id, db)
+    require_can_edit(current_user, route.created_by)
     db.delete(route)
     db.commit()
     leds.all_off()
@@ -139,8 +156,14 @@ def delete_route(route_id: int, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 @router.post("/{route_id}/holds", response_model=RouteHoldOut, status_code=201)
-def add_hold(route_id: int, body: HoldIn, db: Session = Depends(get_db)):
+def add_hold(
+    route_id: int,
+    body: HoldIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     route = _get_route_or_404(route_id, db)
+    require_can_edit(current_user, route.created_by)
     next_seq = len(route.holds)
     hold = RouteHold(
         route_id=route_id,
@@ -156,8 +179,13 @@ def add_hold(route_id: int, body: HoldIn, db: Session = Depends(get_db)):
 
 
 @router.delete("/{route_id}/holds/last", status_code=204)
-def remove_last_hold(route_id: int, db: Session = Depends(get_db)):
+def remove_last_hold(
+    route_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     route = _get_route_or_404(route_id, db)
+    require_can_edit(current_user, route.created_by)
     if not route.holds:
         raise HTTPException(400, "No holds to remove")
     last = route.holds[-1]
