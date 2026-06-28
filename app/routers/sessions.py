@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session as DbSession
 from app.auth import get_current_user, get_admin_user, require_can_edit
 from app.database import get_db
 from app.models import Session, SessionItem, Problem, Route, User
+from app import stats as stats_mod
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -31,10 +32,13 @@ class SessionOut(BaseModel):
     name: str
     description: Optional[str]
     created_by: Optional[int]
+    creator_name: Optional[str] = None
     is_public: bool
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
     item_count: int
+    rating_avg: Optional[float] = None
+    rating_count: int = 0
     items: list[SessionItemOut] = []
 
 
@@ -43,10 +47,13 @@ class SessionSummary(BaseModel):
     name: str
     description: Optional[str]
     created_by: Optional[int]
+    creator_name: Optional[str] = None
     is_public: bool
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
     item_count: int
+    rating_avg: Optional[float] = None
+    rating_count: int = 0
 
 
 class SessionIn(BaseModel):
@@ -107,33 +114,87 @@ def _can_view(user: User, s: Session) -> bool:
     return bool(user.is_admin) or s.is_public or s.created_by == user.id
 
 
-def _summary(s: Session) -> SessionSummary:
+def _summary(s: Session, rating: dict, creator_name: Optional[str] = None) -> SessionSummary:
     return SessionSummary(
         id=s.id, name=s.name, description=s.description,
-        created_by=s.created_by, is_public=s.is_public,
+        created_by=s.created_by, creator_name=creator_name, is_public=s.is_public,
         created_at=s.created_at, updated_at=s.updated_at,
         item_count=len(s.items),
+        rating_avg=rating["rating_avg"], rating_count=rating["rating_count"],
     )
 
 
-def _serialize(s: Session) -> SessionOut:
+def _serialize(s: Session, rating: dict, creator_name: Optional[str] = None) -> SessionOut:
     items = [_item_out(i) for i in s.items]
     return SessionOut(
         id=s.id, name=s.name, description=s.description,
-        created_by=s.created_by, is_public=s.is_public,
+        created_by=s.created_by, creator_name=creator_name, is_public=s.is_public,
         created_at=s.created_at, updated_at=s.updated_at,
         item_count=len(items), items=items,
+        rating_avg=rating["rating_avg"], rating_count=rating["rating_count"],
     )
+
+
+_NO_RATING = {"rating_avg": None, "rating_count": 0}
+
+
+def _creator_name(db: DbSession, created_by: Optional[int]) -> Optional[str]:
+    if created_by is None:
+        return None
+    u = db.get(User, created_by)
+    return u.username if u else None
 
 
 # ---------------------------------------------------------------------------
 # Reads — your own sessions plus any public ones (admins see all)
 # ---------------------------------------------------------------------------
 
+_SORTS = {"created_desc", "created_asc", "rating_desc", "name_asc"}
+
+
 @router.get("", response_model=list[SessionSummary])
-def list_sessions(db: DbSession = Depends(get_db), user: User = Depends(get_current_user)):
-    rows = db.query(Session).order_by(Session.created_at.desc()).all()
-    return [_summary(s) for s in rows if _can_view(user, s)]
+def list_sessions(
+    public: Optional[bool] = None,
+    created_by: Optional[int] = None,
+    min_stars: Optional[float] = None,
+    sort: str = "created_desc",
+    db: DbSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    rows = [s for s in db.query(Session).all() if _can_view(user, s)]
+
+    if public is not None:
+        rows = [s for s in rows if s.is_public == public]
+    if created_by is not None:
+        rows = [s for s in rows if s.created_by == created_by]
+
+    ratings = stats_mod.ratings_by(db, "session_id")
+    names = {u.id: u.username for u in db.query(User).all()}
+
+    if min_stars is not None:
+        rows = [
+            s for s in rows
+            if (ratings.get(s.id, _NO_RATING)["rating_avg"] or 0) >= min_stars
+        ]
+
+    sort = sort if sort in _SORTS else "created_desc"
+
+    def rating_avg(s):
+        return ratings.get(s.id, _NO_RATING)["rating_avg"]
+
+    if sort == "created_asc":
+        rows.sort(key=lambda s: s.created_at or datetime.min)
+    elif sort == "name_asc":
+        rows.sort(key=lambda s: (s.name or "").lower())
+    elif sort == "rating_desc":
+        rows.sort(key=lambda s: (rating_avg(s) is not None, rating_avg(s) or 0), reverse=True)
+    else:  # created_desc
+        rows.sort(key=lambda s: s.created_at or datetime.min, reverse=True)
+
+    return [
+        _summary(s, ratings.get(s.id, _NO_RATING), names.get(s.created_by))
+        for s in rows
+    ]
 
 
 @router.get("/{session_id}", response_model=SessionOut)
@@ -141,7 +202,7 @@ def get_session(session_id: int, db: DbSession = Depends(get_db), user: User = D
     s = _get_or_404(session_id, db)
     if not _can_view(user, s):
         raise HTTPException(404, "Session not found")
-    return _serialize(s)
+    return _serialize(s, stats_mod.rating_for(db, "session_id", s.id), _creator_name(db, s.created_by))
 
 
 # ---------------------------------------------------------------------------
@@ -154,7 +215,7 @@ def create_session(body: SessionIn, db: DbSession = Depends(get_db), user: User 
     db.add(s)
     db.commit()
     db.refresh(s)
-    return _serialize(s)
+    return _serialize(s, stats_mod.rating_for(db, "session_id", s.id), _creator_name(db, s.created_by))
 
 
 @router.put("/{session_id}", response_model=SessionOut)
@@ -165,7 +226,7 @@ def update_session(session_id: int, body: SessionIn, db: DbSession = Depends(get
     s.description = body.description
     db.commit()
     db.refresh(s)
-    return _serialize(s)
+    return _serialize(s, stats_mod.rating_for(db, "session_id", s.id), _creator_name(db, s.created_by))
 
 
 @router.delete("/{session_id}", status_code=204)
@@ -184,7 +245,7 @@ def share_session(session_id: int, body: ShareIn, db: DbSession = Depends(get_db
     s.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(s)
-    return _serialize(s)
+    return _serialize(s, stats_mod.rating_for(db, "session_id", s.id), _creator_name(db, s.created_by))
 
 
 @router.post("/{session_id}/items", response_model=SessionOut, status_code=201)
@@ -203,7 +264,7 @@ def add_item(session_id: int, body: ItemIn, db: DbSession = Depends(get_db), use
     s.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(s)
-    return _serialize(s)
+    return _serialize(s, stats_mod.rating_for(db, "session_id", s.id), _creator_name(db, s.created_by))
 
 
 @router.delete("/{session_id}/items/{item_id}", response_model=SessionOut)
@@ -221,7 +282,7 @@ def remove_item(session_id: int, item_id: int, db: DbSession = Depends(get_db), 
     s.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(s)
-    return _serialize(s)
+    return _serialize(s, stats_mod.rating_for(db, "session_id", s.id), _creator_name(db, s.created_by))
 
 
 @router.put("/{session_id}/items/order", response_model=SessionOut)
@@ -236,4 +297,4 @@ def reorder_items(session_id: int, body: OrderIn, db: DbSession = Depends(get_db
     s.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(s)
-    return _serialize(s)
+    return _serialize(s, stats_mod.rating_for(db, "session_id", s.id), _creator_name(db, s.created_by))

@@ -163,18 +163,22 @@ class Rating(Base):
     __tablename__ = "ratings"
     __table_args__ = (
         CheckConstraint(
-            "(problem_id IS NULL) != (route_id IS NULL)",
+            "(CASE WHEN problem_id IS NULL THEN 0 ELSE 1 END"
+            " + CASE WHEN route_id IS NULL THEN 0 ELSE 1 END"
+            " + CASE WHEN session_id IS NULL THEN 0 ELSE 1 END) = 1",
             name="rating_one_target",
         ),
         CheckConstraint("stars BETWEEN 0 AND 3", name="rating_stars_range"),
         UniqueConstraint("user_id", "problem_id", name="uq_rating_user_problem"),
         UniqueConstraint("user_id", "route_id", name="uq_rating_user_route"),
+        UniqueConstraint("user_id", "session_id", name="uq_rating_user_session"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     problem_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("problems.id"), nullable=True)
     route_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("routes.id"), nullable=True)
+    session_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("sessions.id"), nullable=True)
     stars: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -184,6 +188,7 @@ class Rating(Base):
     user: Mapped["User"] = relationship("User")
     problem: Mapped["Problem | None"] = relationship("Problem")
     route: Mapped["Route | None"] = relationship("Route")
+    session: Mapped["Session | None"] = relationship("Session")
 
 
 class Session(Base):

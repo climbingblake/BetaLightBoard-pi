@@ -55,6 +55,24 @@ def compute_stats(db: Session, col: str) -> dict[int, dict]:
     return out
 
 
+def ratings_by(db: Session, col: str) -> dict[int, dict]:
+    """Return {target_id: {rating_avg, rating_count}} for the given Rating column.
+
+    Use for targets that only carry ratings (e.g. sessions), avoiding the
+    send/attempt queries in compute_stats.
+    """
+    raw = _ratings_by(db, col)
+    return {
+        tid: {"rating_avg": round(avg, 2), "rating_count": cnt}
+        for tid, (avg, cnt) in raw.items()
+    }
+
+
+def rating_for(db: Session, col: str, tid: int) -> dict:
+    """Rating aggregate for a single target id (zero-filled default)."""
+    return ratings_by(db, col).get(tid, {"rating_avg": None, "rating_count": 0})
+
+
 def stats_for(db: Session, col: str, tid: int) -> dict:
     """Stats for a single target id (zero-filled defaults)."""
     return compute_stats(db, col).get(tid, {

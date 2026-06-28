@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "@/api";
 import type { WorkoutSession, SessionItem, Led } from "@/api";
 import { BoardGrid } from "@/components/BoardGrid";
+import { RatingInput } from "@/components/RatingStars";
 
 export default function SessionRunner() {
   const { id } = useParams<{ id: string }>();
@@ -15,10 +16,12 @@ export default function SessionRunner() {
   const [sent, setSent] = useState<Record<number, boolean>>({});
   const [preview, setPreview] = useState<Led[]>([]);
   const [busy, setBusy] = useState(false);
+  const [myStars, setMyStars] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id) return;
     api.sessions.get(Number(id)).then(setSession);
+    api.ratings.get({ session_id: Number(id) }).then((r) => setMyStars(r?.stars ?? null)).catch(() => {});
     api.settings.list().then((s) => {
       const r = s.find((x) => x.key === "NUMB_ROWS")?.value;
       const c = s.find((x) => x.key === "NUMB_COLS")?.value;
@@ -55,6 +58,12 @@ export default function SessionRunner() {
 
   async function stopBoard() {
     await api.routines.stop().catch(() => {});
+  }
+
+  async function rateSession(stars: number) {
+    if (!id) return;
+    setMyStars(stars);
+    await api.ratings.set({ session_id: Number(id), stars }).catch(() => {});
   }
 
   function advance() {
@@ -110,6 +119,12 @@ export default function SessionRunner() {
               ))}
             </ul>
           )}
+        </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 mb-6">
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Rate this session</p>
+          <div className="flex justify-center">
+            <RatingInput value={myStars} onChange={rateSession} />
+          </div>
         </div>
         <div className="flex gap-2 justify-center">
           <button

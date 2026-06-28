@@ -115,8 +115,15 @@ export interface Rating {
   user_id: number;
   problem_id: number | null;
   route_id: number | null;
+  session_id: number | null;
   stars: number;
 }
+
+export type SessionSortKey =
+  | "created_desc"
+  | "created_asc"
+  | "rating_desc"
+  | "name_asc";
 
 export interface SessionItem {
   id: number;
@@ -133,10 +140,13 @@ export interface WorkoutSession {
   name: string;
   description: string | null;
   created_by: number | null;
+  creator_name: string | null;
   is_public: boolean;
   created_at: string | null;
   updated_at: string | null;
   item_count: number;
+  rating_avg: number | null;
+  rating_count: number;
   items: SessionItem[];
 }
 
@@ -255,15 +265,15 @@ export const api = {
   },
 
   ratings: {
-    get: (params: { problem_id?: number; route_id?: number }) => {
+    get: (params: { problem_id?: number; route_id?: number; session_id?: number }) => {
       const qs = new URLSearchParams(
         Object.fromEntries(Object.entries(params).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]))
       ).toString();
       return req<Rating | null>("GET", `/ratings/me${qs ? "?" + qs : ""}`);
     },
-    set: (body: { problem_id?: number; route_id?: number; stars: number }) =>
+    set: (body: { problem_id?: number; route_id?: number; session_id?: number; stars: number }) =>
       req<Rating>("POST", "/ratings", body),
-    clear: (params: { problem_id?: number; route_id?: number }) => {
+    clear: (params: { problem_id?: number; route_id?: number; session_id?: number }) => {
       const qs = new URLSearchParams(
         Object.fromEntries(Object.entries(params).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]))
       ).toString();
@@ -272,7 +282,13 @@ export const api = {
   },
 
   sessions: {
-    list:   ()           => req<WorkoutSession[]>("GET", "/sessions"),
+    list:   (params?: { public?: boolean; created_by?: number; min_stars?: number; sort?: SessionSortKey }) => {
+      const filtered = Object.fromEntries(
+        Object.entries(params ?? {}).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])
+      );
+      const qs = new URLSearchParams(filtered).toString();
+      return req<WorkoutSession[]>("GET", `/sessions${qs ? "?" + qs : ""}`);
+    },
     get:    (id: number) => req<WorkoutSession>("GET", `/sessions/${id}`),
     create: (body: { name: string; description?: string }) =>
       req<WorkoutSession>("POST", "/sessions", body),
