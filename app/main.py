@@ -51,6 +51,60 @@ def _reconcile_columns():
             logger.info("Reconciled schema: added %s.%s", table, column)
 
 
+def _reconcile_ratings_target():
+    """Rebuild the ratings table to allow session_id as a third rating target.
+
+    create_all won't add the column or swap the CHECK constraint on an existing
+    table, and SQLite can't ALTER either in place, so rebuild-and-copy when the
+    session_id column is absent. Idempotent: skipped once the column exists.
+    Mirrors Alembic migration 0005.
+    """
+    insp = inspect(engine)
+    if "ratings" not in set(insp.get_table_names()):
+        return  # fresh DB; create_all already built the current schema
+    if "session_id" in {c["name"] for c in insp.get_columns("ratings")}:
+        return
+
+    raw = engine.raw_connection()
+    try:
+        cur = raw.cursor()
+        cur.execute("PRAGMA foreign_keys=OFF")
+        cur.executescript(
+            """
+            BEGIN;
+            CREATE TABLE ratings_new (
+                id INTEGER NOT NULL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                problem_id INTEGER REFERENCES problems(id),
+                route_id INTEGER REFERENCES routes(id),
+                session_id INTEGER REFERENCES sessions(id),
+                stars INTEGER NOT NULL,
+                created_at DATETIME,
+                updated_at DATETIME,
+                CONSTRAINT rating_one_target CHECK (
+                    (CASE WHEN problem_id IS NULL THEN 0 ELSE 1 END
+                     + CASE WHEN route_id IS NULL THEN 0 ELSE 1 END
+                     + CASE WHEN session_id IS NULL THEN 0 ELSE 1 END) = 1
+                ),
+                CONSTRAINT rating_stars_range CHECK (stars BETWEEN 0 AND 3),
+                CONSTRAINT uq_rating_user_problem UNIQUE (user_id, problem_id),
+                CONSTRAINT uq_rating_user_route UNIQUE (user_id, route_id),
+                CONSTRAINT uq_rating_user_session UNIQUE (user_id, session_id)
+            );
+            INSERT INTO ratings_new (id, user_id, problem_id, route_id, stars, created_at, updated_at)
+                SELECT id, user_id, problem_id, route_id, stars, created_at, updated_at FROM ratings;
+            DROP TABLE ratings;
+            ALTER TABLE ratings_new RENAME TO ratings;
+            COMMIT;
+            """
+        )
+        cur.execute("PRAGMA foreign_keys=ON")
+        raw.commit()
+        logger.info("Reconciled schema: rebuilt ratings with session_id target")
+    finally:
+        raw.close()
+
+
 def _backfill_owners():
     """Assign any owner-less problem/route to the first admin user (idempotent)."""
     with engine.begin() as conn:
@@ -69,6 +123,7 @@ def _backfill_owners():
 def init_db():
     Base.metadata.create_all(bind=engine)
     _reconcile_columns()
+    _reconcile_ratings_target()
     _backfill_owners()
     db = SessionLocal()
     try:
