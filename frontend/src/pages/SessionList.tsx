@@ -156,7 +156,7 @@ export default function SessionList() {
                       <span className="text-xs bg-green-900/40 text-green-300 px-1.5 py-0.5 rounded shrink-0">Public</span>
                     )}
                     {!mine && !s.is_public && (
-                      <span className="text-xs bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded shrink-0">shared</span>
+                      <span className="text-xs bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded shrink-0">Private</span>
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
