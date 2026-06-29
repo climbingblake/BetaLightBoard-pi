@@ -161,7 +161,11 @@ def list_sessions(
     db: DbSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    rows = [s for s in db.query(Session).all() if _can_view(user, s)]
+    # Admins see everything; non-admins see public + own
+    if user.is_admin:
+        rows = list(db.query(Session).all())
+    else:
+        rows = [s for s in db.query(Session).all() if _can_view(user, s)]
 
     if public is not None:
         rows = [s for s in rows if s.is_public == public]
