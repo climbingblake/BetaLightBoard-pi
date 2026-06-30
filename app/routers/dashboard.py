@@ -82,9 +82,10 @@ def dashboard(db: DbSession = Depends(get_db), user: User = Depends(get_current_
         "sends": _weekly(send_dts, WEEKS, now),
     }
 
-    # --- sends over time, split problems vs routes ---
-    p_send_dts = [ts for ts, pid in send_rows if pid is not None]
-    r_send_dts = [ts for ts, pid in send_rows if pid is None]
+    # --- sends over time (current user only), split problems vs routes ---
+    my_send_rows = db.query(Send.timestamp, Send.problem_id).filter(Send.user_id == user.id).all()
+    p_send_dts = [ts for ts, pid in my_send_rows if pid is not None]
+    r_send_dts = [ts for ts, pid in my_send_rows if pid is None]
     p_weekly = _weekly(p_send_dts, WEEKS, now)
     r_weekly = _weekly(r_send_dts, WEEKS, now)
     sends_over_time = []

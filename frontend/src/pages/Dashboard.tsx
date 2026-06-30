@@ -97,7 +97,7 @@ export default function Dashboard() {
       {/* Sends over time + recent activity */}
       <div className="grid lg:grid-cols-3 gap-4 mb-4">
         <Card
-          title="Sends over time"
+          title="Your Sends over time"
           className="lg:col-span-2"
           right={
             <div className="flex items-center gap-3 text-xs">
@@ -117,30 +117,20 @@ export default function Dashboard() {
             <span>{d.sends_over_time[d.sends_over_time.length - 1]?.week}</span>
           </div>
           <div className="mt-3 flex gap-6 text-sm">
-            <div><span className="text-slate-100 font-semibold">{d.totals.sends}</span> <span className="text-slate-500">total sends</span></div>
-            <div><span className="text-slate-100 font-semibold">{fmtSendRate(d.send_rate_overall)}</span> <span className="text-slate-500">send rate</span></div>
+            <div><span className="text-slate-100 font-semibold">{d.me.sends}</span> <span className="text-slate-500">total sends</span></div>
+            <div><span className="text-slate-100 font-semibold">{fmtSendRate(d.me.send_rate)}</span> <span className="text-slate-500">send rate</span></div>
           </div>
         </Card>
 
-        <Card title="Recent activity">
-          {d.recent_activity.length === 0 ? (
-            <p className="text-sm text-slate-600">Nothing logged yet.</p>
-          ) : (
-            <ul className="flex flex-col gap-3">
-              {d.recent_activity.map((a, i) => (
-                <li key={i} className="flex items-center gap-2 text-sm">
-                  <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${a.kind === "send" ? "bg-green-400" : "bg-slate-500"}`} />
-                  <span className="text-slate-300 truncate">
-                    <span className="text-slate-100">{a.who}</span>{" "}
-                    {a.kind === "send" ? "sent" : "tried"}{" "}
-                    <span className="text-slate-400">{a.name}</span>
-                  </span>
-                  <span className="ml-auto text-xs text-slate-600 shrink-0">{a.when ? fmtRelative(a.when) : ""}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+        <Card title="Your stats">
+            <div className="grid grid-cols-2 gap-3 text-center">
+              <Stat label="Sends" value={d.me.sends} />
+              <Stat label="Attempts" value={d.me.attempts} />
+              <Stat label="Send rate" value={fmtSendRate(d.me.send_rate)} />
+              <Stat label="Favorites" value={d.me.favorites} />
+            </div>
+          </Card>
+
       </div>
 
       {/* Top problems + you / leaderboard */}
@@ -167,14 +157,25 @@ export default function Dashboard() {
         </Card>
 
         <div className="flex flex-col gap-4">
-          <Card title="Your stats">
-            <div className="grid grid-cols-2 gap-3 text-center">
-              <Stat label="Sends" value={d.me.sends} />
-              <Stat label="Attempts" value={d.me.attempts} />
-              <Stat label="Send rate" value={fmtSendRate(d.me.send_rate)} />
-              <Stat label="Favorites" value={d.me.favorites} />
-            </div>
-          </Card>
+<Card title="Recent activity">
+          {d.recent_activity.length === 0 ? (
+            <p className="text-sm text-slate-600">Nothing logged yet.</p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {d.recent_activity.map((a, i) => (
+                <li key={i} className="flex items-center gap-2 text-sm">
+                  <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${a.kind === "send" ? "bg-green-400" : "bg-slate-500"}`} />
+                  <span className="text-slate-300 truncate">
+                    <span className="text-slate-100">{a.who}</span>{" "}
+                    {a.kind === "send" ? "sent" : "tried"}{" "}
+                    <span className="text-slate-400">{a.name}</span>
+                  </span>
+                  <span className="ml-auto text-xs text-slate-600 shrink-0">{a.when ? fmtRelative(a.when) : ""}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
           <Card title="Top climbers">
             {d.leaderboard.length === 0 ? (
               <p className="text-sm text-slate-600">No sends logged yet.</p>
@@ -229,7 +230,7 @@ function PyramidCard() {
   );
 
   return (
-    <Card title="Workout pyramid" right={toggle} className="mb-4">
+    <Card title="Your Workout Pyramid" right={toggle} className="mb-4">
       {err ? (
         <p className="text-sm text-slate-600">Couldn’t load your pyramid.</p>
       ) : !data ? (
