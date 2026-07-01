@@ -21,7 +21,7 @@ Flash **Raspberry Pi OS Lite (64-bit)** using Raspberry Pi Imager. In the imager
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y git python3-pip python3-venv liblgpio-dev
+sudo apt install -y git python3-pip python3-venv liblgpio-dev swig python3-dev
 ```
 
 ### 3. Enable SPI
@@ -38,7 +38,7 @@ SPI is required for NeoPixel control via adafruit-blinka on the Pi 5's RP1 GPIO 
 
 ```bash
 cd /home/pi
-git clone <repo-url> BetaLightBoard-pi
+git clone https://github.com/climbingblake/BetaLightBoard-pi.git
 cd BetaLightBoard-pi
 ```
 
@@ -55,11 +55,24 @@ pip install adafruit-circuitpython-neopixel adafruit-blinka lgpio
 
 ### 6. Database
 
+The app builds its own schema at startup (`init_db` in `app/main.py`, via
+SQLAlchemy `create_all` + column reconciliation) — this is the live source of
+truth, not Alembic. On a fresh DB, run `alembic upgrade head` first and it
+will fail (`no such table: problems`) because no migration creates the base
+tables, they only exist via `create_all`.
+
+Initialize the schema directly instead:
+
 ```bash
-python3 -m alembic upgrade head
+python3 -c "from app.main import init_db; init_db()"
+python3 -m alembic stamp head
 ```
 
-This creates the SQLite database and applies all migrations. Re-run after pulling new code that includes migrations.
+`init_db()` creates all tables and reconciles columns. `alembic stamp head`
+marks the DB as current without running any migrations, since they'd just
+duplicate what `init_db()` already did. You don't need to touch Alembic again
+after this, see "Deploying updates" below, schema changes reconcile
+automatically on every restart.
 
 ### 7. systemd service
 

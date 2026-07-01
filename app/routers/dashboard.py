@@ -20,6 +20,7 @@ from app import stats as stats_mod
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 WEEKS = 12
+DAYS = 30
 
 
 def _weekly(dts, weeks: int, now: datetime) -> list[int]:
@@ -33,6 +34,21 @@ def _weekly(dts, weeks: int, now: datetime) -> list[int]:
             days = 0
         idx = weeks - 1 - days // 7
         if 0 <= idx < weeks:
+            buckets[idx] += 1
+    return buckets
+
+
+def _daily(dts, days: int, now: datetime) -> list[int]:
+    """Bucket datetimes into `days` trailing 1-day buckets (oldest first)."""
+    buckets = [0] * days
+    for dt in dts:
+        if dt is None:
+            continue
+        delta = (now - dt).days
+        if delta < 0:
+            delta = 0
+        idx = days - 1 - delta
+        if 0 <= idx < days:
             buckets[idx] += 1
     return buckets
 
@@ -82,20 +98,20 @@ def dashboard(db: DbSession = Depends(get_db), user: User = Depends(get_current_
         "sends": _weekly(send_dts, WEEKS, now),
     }
 
-    # --- sends over time (current user only), split problems vs routes ---
+    # --- sends over time (current user only, daily), split problems vs routes ---
     my_send_rows = db.query(Send.timestamp, Send.problem_id).filter(Send.user_id == user.id).all()
     p_send_dts = [ts for ts, pid in my_send_rows if pid is not None]
     r_send_dts = [ts for ts, pid in my_send_rows if pid is None]
-    p_weekly = _weekly(p_send_dts, WEEKS, now)
-    r_weekly = _weekly(r_send_dts, WEEKS, now)
+    p_daily = _daily(p_send_dts, DAYS, now)
+    r_daily = _daily(r_send_dts, DAYS, now)
     sends_over_time = []
-    for i in range(WEEKS):
-        wk_start = now - timedelta(days=(WEEKS - 1 - i) * 7)
+    for i in range(DAYS):
+        day = now - timedelta(days=(DAYS - 1 - i))
         sends_over_time.append({
-            "week": wk_start.strftime("%b %d"),
-            "problems": p_weekly[i],
-            "routes": r_weekly[i],
-            "total": p_weekly[i] + r_weekly[i],
+            "week": day.strftime("%b %d"),
+            "problems": p_daily[i],
+            "routes": r_daily[i],
+            "total": p_daily[i] + r_daily[i],
         })
 
     # --- grade distribution (problems) ---

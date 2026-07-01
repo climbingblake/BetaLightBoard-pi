@@ -101,6 +101,7 @@ export default function Dashboard() {
           className="lg:col-span-2"
           right={
             <div className="flex items-center gap-3 text-xs">
+              <span className="text-slate-600">last 30 days</span>
               <Legend color={ACCENT.blue} label="Problems" />
               <Legend color={ACCENT.orange} label="Routes" />
             </div>
