@@ -5,12 +5,15 @@ export function fmtSendRate(rate: number | null): string {
 
 export function fmtRelative(ts: string | null): string {
   if (!ts) return "";
-  const then = new Date(ts).getTime();
-  const diff = Date.now() - then;
-  const day = 86400000;
-  if (diff < day) return "today";
-  if (diff < 2 * day) return "yesterday";
-  if (diff < 30 * day) return `${Math.floor(diff / day)}d ago`;
-  if (diff < 365 * day) return `${Math.floor(diff / (30 * day))}mo ago`;
-  return `${Math.floor(diff / (365 * day))}y ago`;
+  const then = new Date(ts);
+  const now = new Date();
+  // Compare calendar dates in local time, not a rolling 24h window
+  const thenDay = new Date(then.getFullYear(), then.getMonth(), then.getDate());
+  const nowDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round((nowDay.getTime() - thenDay.getTime()) / 86400000);
+  if (diffDays === 0) return "today";
+  if (diffDays === 1) return "yesterday";
+  if (diffDays < 30) return `${diffDays}d ago`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+  return `${Math.floor(diffDays / 365)}y ago`;
 }
