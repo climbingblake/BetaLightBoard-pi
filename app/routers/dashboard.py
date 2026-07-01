@@ -39,12 +39,13 @@ def _weekly(dts, weeks: int, now: datetime) -> list[int]:
 
 
 def _daily(dts, days: int, now: datetime) -> list[int]:
-    """Bucket datetimes into `days` trailing 1-day buckets (oldest first)."""
+    """Bucket datetimes into `days` trailing calendar-day buckets (oldest first)."""
     buckets = [0] * days
+    now_date = now.date()
     for dt in dts:
         if dt is None:
             continue
-        delta = (now - dt).days
+        delta = (now_date - dt.date()).days
         if delta < 0:
             delta = 0
         idx = days - 1 - delta
