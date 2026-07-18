@@ -10,6 +10,20 @@ import type { SortKey } from "@/api";
 
 const GRADE_OPTIONS = ["V0","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","V11","V12"];
 
+const RATING_OPTIONS: { key: string; label: string; test: (r: number | null) => boolean }[] = [
+  { key: "0",   label: "0 ★",   test: (r) => r == null || r === 0 },
+  { key: "gt0", label: "> 0 ★", test: (r) => r != null && r > 0 },
+  { key: "1",   label: "≥ 1 ★", test: (r) => r != null && r >= 1 },
+  { key: "gt1", label: "> 1 ★", test: (r) => r != null && r > 1 },
+  { key: "2",   label: "≥ 2 ★", test: (r) => r != null && r >= 2 },
+  { key: "gt2", label: "> 2 ★", test: (r) => r != null && r > 2 },
+  { key: "3",   label: "≥ 3 ★", test: (r) => r != null && r >= 3 },
+  { key: "gt3", label: "> 3 ★", test: (r) => r != null && r > 3 },
+  { key: "4",   label: "≥ 4 ★", test: (r) => r != null && r >= 4 },
+  { key: "gt4", label: "> 4 ★", test: (r) => r != null && r > 4 },
+  { key: "5",   label: "5 ★",   test: (r) => r != null && r >= 5 },
+];
+
 const SORTS: { value: SortKey; label: string }[] = [
   { value: "created_desc", label: "Newest" },
   { value: "created_asc", label: "Oldest" },
@@ -86,10 +100,79 @@ function GradeCheckboxDropdown({
   );
 }
 
+function RatingCheckboxDropdown({
+  selected,
+  onChange,
+}: {
+  selected: Set<string>;
+  onChange: (next: Set<string>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  function toggle(key: string) {
+    const next = new Set(selected);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    onChange(next);
+  }
+
+  const label =
+    selected.size === 0
+      ? "ALL"
+      : RATING_OPTIONS.filter((o) => selected.has(o.key)).map((o) => o.label).join(", ");
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="bg-slate-800 border border-slate-700 text-slate-200 rounded px-3 py-1.5 text-sm flex items-center gap-2 min-w-[80px]"
+      >
+        <span className="truncate max-w-[160px]">{label}</span>
+        <span className="text-slate-500 ml-auto">▾</span>
+      </button>
+      {open && (
+        <div className="absolute top-full mt-1 left-0 z-50 bg-slate-800 border border-slate-700 rounded shadow-lg p-2 min-w-[120px]">
+          <label className="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-700 cursor-pointer text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={selected.size === 0}
+              onChange={() => onChange(new Set())}
+              className="accent-blue-500"
+            />
+            ALL
+          </label>
+          <div className="border-t border-slate-700 my-1" />
+          {RATING_OPTIONS.map((o) => (
+            <label key={o.key} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-700 cursor-pointer text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={selected.has(o.key)}
+                onChange={() => toggle(o.key)}
+                className="accent-blue-500"
+              />
+              {o.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProblemList() {
   const { problems, loading, fetchProblems, deleteProblem, loadToBoard } = useProblemStore();
   const { user } = useAuth();
   const [selectedGrades, setSelectedGrades] = useState<Set<string>>(new Set());
+  const [selectedRatings, setSelectedRatings] = useState<Set<string>>(new Set());
   const [setter, setSetter] = useState("ALL");
   const [sort, setSort] = useState<SortKey>("created_desc");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -113,7 +196,11 @@ export default function ProblemList() {
   }, []);
 
   const setters = ["ALL", ...Array.from(new Set(problems.map((p) => p.setter ?? "").filter(Boolean)))];
-  const visible = favoritesOnly ? problems.filter((p) => favIds.has(p.id)) : problems;
+  const activeRatingTests = RATING_OPTIONS.filter((o) => selectedRatings.has(o.key));
+  const byFav = favoritesOnly ? problems.filter((p) => favIds.has(p.id)) : problems;
+  const visible = activeRatingTests.length === 0
+    ? byFav
+    : byFav.filter((p) => activeRatingTests.some((o) => o.test(p.rating_avg)));
 
   async function handleDelete(id: number, e: React.MouseEvent) {
     e.stopPropagation();
@@ -143,6 +230,10 @@ export default function ProblemList() {
         <div>
           <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Grade</label>
           <GradeCheckboxDropdown selected={selectedGrades} onChange={setSelectedGrades} />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Rating</label>
+          <RatingCheckboxDropdown selected={selectedRatings} onChange={setSelectedRatings} />
         </div>
         <div>
           <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Setter</label>
