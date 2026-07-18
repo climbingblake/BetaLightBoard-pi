@@ -12,16 +12,9 @@ const GRADE_OPTIONS = ["V0","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","
 
 const RATING_OPTIONS: { key: string; label: string; test: (r: number | null) => boolean }[] = [
   { key: "0",   label: "0 ★",   test: (r) => r == null || r === 0 },
-  { key: "gt0", label: "> 0 ★", test: (r) => r != null && r > 0 },
   { key: "1",   label: "≥ 1 ★", test: (r) => r != null && r >= 1 },
-  { key: "gt1", label: "> 1 ★", test: (r) => r != null && r > 1 },
   { key: "2",   label: "≥ 2 ★", test: (r) => r != null && r >= 2 },
-  { key: "gt2", label: "> 2 ★", test: (r) => r != null && r > 2 },
   { key: "3",   label: "≥ 3 ★", test: (r) => r != null && r >= 3 },
-  { key: "gt3", label: "> 3 ★", test: (r) => r != null && r > 3 },
-  { key: "4",   label: "≥ 4 ★", test: (r) => r != null && r >= 4 },
-  { key: "gt4", label: "> 4 ★", test: (r) => r != null && r > 4 },
-  { key: "5",   label: "5 ★",   test: (r) => r != null && r >= 5 },
 ];
 
 const ASCENT_OPTIONS: { key: string; label: string; test: (a: number) => boolean }[] = [
