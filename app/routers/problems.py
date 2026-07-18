@@ -99,14 +99,16 @@ def _load_problem_to_board(problem: Problem, num_cols: int):
 
 @router.get("", response_model=list[ProblemOut])
 def list_problems(
-    grade: str | None = None,
+    grades: str | None = None,
     setter: str | None = None,
     sort: str = "created_desc",
     db: Session = Depends(get_db),
 ):
     q = db.query(Problem)
-    if grade and grade != "ALL":
-        q = q.filter(Problem.grade.ilike(grade))
+    if grades:
+        grade_list = [g.strip() for g in grades.split(",") if g.strip()]
+        if grade_list:
+            q = q.filter(Problem.grade.in_(grade_list))
     if setter and setter != "ALL":
         q = q.filter(Problem.setter.ilike(setter))
     problems = q.all()

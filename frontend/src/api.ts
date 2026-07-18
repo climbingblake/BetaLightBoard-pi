@@ -181,7 +181,7 @@ export const api = {
   },
 
   problems: {
-    list: (params?: { grade?: string; setter?: string; sort?: SortKey }) => {
+    list: (params?: { grades?: string; setter?: string; sort?: SortKey }) => {
       const filtered = Object.fromEntries(
         Object.entries(params ?? {}).filter(([, v]) => v != null && v !== "undefined")
       );

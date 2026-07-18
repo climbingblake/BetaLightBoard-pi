@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProblemStore } from "@/store/useProblemStore";
 import { RatingDisplay } from "@/components/RatingStars";
@@ -8,7 +8,7 @@ import { useAuth } from "@/store/useAuth";
 import { api } from "@/api";
 import type { SortKey } from "@/api";
 
-const GRADES = ["ALL", "V0","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","V11","V12"];
+const GRADE_OPTIONS = ["V0","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","V11","V12"];
 
 const SORTS: { value: SortKey; label: string }[] = [
   { value: "created_desc", label: "Newest" },
@@ -18,23 +18,93 @@ const SORTS: { value: SortKey; label: string }[] = [
   { value: "send_rate_desc", label: "Highest send rate" },
 ];
 
+function GradeCheckboxDropdown({
+  selected,
+  onChange,
+}: {
+  selected: Set<string>;
+  onChange: (next: Set<string>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  function toggle(grade: string) {
+    const next = new Set(selected);
+    if (next.has(grade)) next.delete(grade);
+    else next.add(grade);
+    onChange(next);
+  }
+
+  const label =
+    selected.size === 0
+      ? "ALL"
+      : [...GRADE_OPTIONS].filter((g) => selected.has(g)).join(", ");
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="bg-slate-800 border border-slate-700 text-slate-200 rounded px-3 py-1.5 text-sm flex items-center gap-2 min-w-[80px]"
+      >
+        <span className="truncate max-w-[160px]">{label}</span>
+        <span className="text-slate-500 ml-auto">▾</span>
+      </button>
+      {open && (
+        <div className="absolute top-full mt-1 left-0 z-50 bg-slate-800 border border-slate-700 rounded shadow-lg p-2 min-w-[120px]">
+          <label className="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-700 cursor-pointer text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={selected.size === 0}
+              onChange={() => onChange(new Set())}
+              className="accent-blue-500"
+            />
+            ALL
+          </label>
+          <div className="border-t border-slate-700 my-1" />
+          {GRADE_OPTIONS.map((g) => (
+            <label key={g} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-700 cursor-pointer text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={selected.has(g)}
+                onChange={() => toggle(g)}
+                className="accent-blue-500"
+              />
+              {g}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProblemList() {
   const { problems, loading, fetchProblems, deleteProblem, loadToBoard } = useProblemStore();
   const { user } = useAuth();
-  const [grade, setGrade] = useState("ALL");
+  const [selectedGrades, setSelectedGrades] = useState<Set<string>>(new Set());
   const [setter, setSetter] = useState("ALL");
   const [sort, setSort] = useState<SortKey>("created_desc");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [favIds, setFavIds] = useState<Set<number>>(new Set());
   const navigate = useNavigate();
 
+  const gradesKey = [...GRADE_OPTIONS].filter((g) => selectedGrades.has(g)).join(",");
+
   useEffect(() => {
     fetchProblems({
-      grade: grade !== "ALL" ? grade : undefined,
+      grades: gradesKey || undefined,
       setter: setter !== "ALL" ? setter : undefined,
       sort,
     });
-  }, [grade, setter, sort]);
+  }, [gradesKey, setter, sort]);
 
   useEffect(() => {
     api.favorites.list("problem")
@@ -72,13 +142,7 @@ export default function ProblemList() {
       <div className="flex gap-4 mb-6">
         <div>
           <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Grade</label>
-          <select
-            value={grade}
-            onChange={(e) => setGrade(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-slate-200 rounded px-3 py-1.5 text-sm"
-          >
-            {GRADES.map((g) => <option key={g}>{g}</option>)}
-          </select>
+          <GradeCheckboxDropdown selected={selectedGrades} onChange={setSelectedGrades} />
         </div>
         <div>
           <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Setter</label>

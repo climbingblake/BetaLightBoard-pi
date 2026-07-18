@@ -8,7 +8,7 @@ interface ProblemStore {
   loading: boolean;
   error: string | null;
 
-  fetchProblems: (filters?: { grade?: string; setter?: string; sort?: SortKey }) => Promise<void>;
+  fetchProblems: (filters?: { grades?: string; setter?: string; sort?: SortKey }) => Promise<void>;
   fetchProblem: (id: number) => Promise<void>;
   createProblem: (data: Partial<Problem>) => Promise<Problem>;
   updateProblem: (id: number, data: Partial<Problem>) => Promise<void>;
