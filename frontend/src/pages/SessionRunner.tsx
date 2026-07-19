@@ -134,7 +134,7 @@ export default function SessionRunner() {
             Run again
           </button>
           <button
-            onClick={() => navigate("/sessions")}
+            onClick={() => navigate(-1)}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm transition-colors"
           >
             Done
@@ -209,7 +209,7 @@ export default function SessionRunner() {
               ← Previous
             </button>
             <button
-              onClick={() => { stopBoard(); navigate("/sessions"); }}
+              onClick={() => { stopBoard(); navigate(-1); }}
               className="flex-1 py-2 text-slate-600 hover:text-slate-400 rounded text-sm transition-colors"
             >
               Quit

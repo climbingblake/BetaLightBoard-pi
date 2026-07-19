@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "@/api";
 import type { WorkoutSession, SessionSortKey } from "@/api";
 import { useAuth } from "@/store/useAuth";
@@ -28,6 +28,7 @@ const MIN_STARS = [
 
 export default function SessionList() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const isAdmin = !!user?.is_admin;
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
@@ -35,10 +36,20 @@ export default function SessionList() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
 
-  const [visibility, setVisibility] = useState("all");
-  const [creator, setCreator] = useState("ALL");
-  const [minStars, setMinStars] = useState("0");
-  const [sort, setSort] = useState<SessionSortKey>("created_desc");
+  const visibility = searchParams.get("visibility") ?? "all";
+  const creator = searchParams.get("creator") ?? "ALL";
+  const minStars = searchParams.get("minStars") ?? "0";
+  const sort = (searchParams.get("sort") ?? "created_desc") as SessionSortKey;
+
+  function patch(updates: Record<string, string>) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      for (const [k, v] of Object.entries(updates)) {
+        if (!v) next.delete(k); else next.set(k, v);
+      }
+      return next;
+    }, { replace: true });
+  }
 
   function refresh() {
     api.sessions
@@ -106,13 +117,13 @@ export default function SessionList() {
       <div className="flex flex-wrap gap-4 mb-6">
         <div>
           <label className={labelCls}>Visibility</label>
-          <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className={selectCls}>
+          <select value={visibility} onChange={(e) => patch({ visibility: e.target.value === "all" ? "" : e.target.value })} className={selectCls}>
             {VISIBILITY.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
           </select>
         </div>
         <div>
           <label className={labelCls}>Creator</label>
-          <select value={creator} onChange={(e) => setCreator(e.target.value)} className={selectCls}>
+          <select value={creator} onChange={(e) => patch({ creator: e.target.value === "ALL" ? "" : e.target.value })} className={selectCls}>
             <option value="ALL">Anyone</option>
             {creators.map((c) => (
               <option key={c.id} value={c.id}>
@@ -123,13 +134,13 @@ export default function SessionList() {
         </div>
         <div>
           <label className={labelCls}>Rating</label>
-          <select value={minStars} onChange={(e) => setMinStars(e.target.value)} className={selectCls}>
+          <select value={minStars} onChange={(e) => patch({ minStars: e.target.value === "0" ? "" : e.target.value })} className={selectCls}>
             {MIN_STARS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
         </div>
         <div>
           <label className={labelCls}>Sort</label>
-          <select value={sort} onChange={(e) => setSort(e.target.value as SessionSortKey)} className={selectCls}>
+          <select value={sort} onChange={(e) => patch({ sort: e.target.value === "created_desc" ? "" : e.target.value })} className={selectCls}>
             {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
         </div>

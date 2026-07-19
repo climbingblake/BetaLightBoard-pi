@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "@/api";
 import type { Route, SortKey } from "@/api";
 import { RatingDisplay } from "@/components/RatingStars";
@@ -15,11 +15,23 @@ const SORTS: { value: SortKey; label: string }[] = [
 
 export default function RouteList() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [routes, setRoutes] = useState<Route[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [q, setQ] = useState("");
-  const [sort, setSort] = useState<SortKey>("created_desc");
+
+  const q = searchParams.get("q") ?? "";
+  const sort = (searchParams.get("sort") ?? "created_desc") as SortKey;
+
+  function patch(updates: Record<string, string>) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      for (const [k, v] of Object.entries(updates)) {
+        if (!v) next.delete(k); else next.set(k, v);
+      }
+      return next;
+    }, { replace: true });
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -50,7 +62,7 @@ export default function RouteList() {
           <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Search</label>
           <input
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => patch({ q: e.target.value })}
             placeholder="Search by name…"
             className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded px-3 py-1.5 text-sm"
           />
@@ -59,7 +71,7 @@ export default function RouteList() {
           <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Sort</label>
           <select
             value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
+            onChange={(e) => patch({ sort: e.target.value === "created_desc" ? "" : e.target.value })}
             className="bg-slate-800 border border-slate-700 text-slate-200 rounded px-3 py-1.5 text-sm"
           >
             {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}

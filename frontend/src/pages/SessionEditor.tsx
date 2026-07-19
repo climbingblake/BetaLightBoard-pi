@@ -76,7 +76,7 @@ export default function SessionEditor() {
     <div className="max-w-2xl mx-auto p-6 mt-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-slate-100">Edit Session</h1>
-        <button onClick={() => navigate("/sessions")} className="text-sm text-slate-500 hover:text-slate-300">← Back</button>
+        <button onClick={() => navigate(-1)} className="text-sm text-slate-500 hover:text-slate-300">← Back</button>
       </div>
 
       {/* Meta */}

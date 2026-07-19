@@ -233,7 +233,7 @@ export default function RouteShow() {
             </button>
           )}
           <button
-            onClick={() => navigate("/routes")}
+            onClick={() => navigate(-1)}
             className="w-full py-2 text-slate-600 hover:text-slate-400 rounded text-sm transition-colors"
           >
             ← Back
