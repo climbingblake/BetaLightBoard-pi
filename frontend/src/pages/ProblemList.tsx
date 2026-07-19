@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useProblemStore } from "@/store/useProblemStore";
 import { RatingDisplay } from "@/components/RatingStars";
 import { fmtSendRate, fmtRelative } from "@/lib/format";
@@ -240,18 +240,33 @@ function AscentsCheckboxDropdown({
 }
 
 export default function ProblemList() {
-  const { problems, loading, fetchProblems, deleteProblem, loadToBoard } = useProblemStore();
+  const { problems, loading, fetchProblems, deleteProblem, loadToBoard, setVisibleProblems } = useProblemStore();
   const { user } = useAuth();
-  const [selectedGrades, setSelectedGrades] = useState<Set<string>>(new Set());
-  const [selectedRatings, setSelectedRatings] = useState<Set<string>>(new Set());
-  const [selectedAscents, setSelectedAscents] = useState<Set<string>>(new Set());
-  const [setter, setSetter] = useState("ALL");
-  const [sort, setSort] = useState<SortKey>("created_desc");
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [favIds, setFavIds] = useState<Set<number>>(new Set());
   const navigate = useNavigate();
 
-  const gradesKey = [...GRADE_OPTIONS].filter((g) => selectedGrades.has(g)).join(",");
+  // All filter state lives in the URL — back button restores it for free
+  const gradesKey = searchParams.get("grades") ?? "";
+  const ratingsKey = searchParams.get("ratings") ?? "";
+  const ascentsKey = searchParams.get("ascents") ?? "";
+  const setter = searchParams.get("setter") ?? "ALL";
+  const sort = (searchParams.get("sort") ?? "created_desc") as SortKey;
+  const favoritesOnly = searchParams.get("fav") === "1";
+
+  const selectedGrades = useMemo(() => new Set(gradesKey ? gradesKey.split(",") : []), [gradesKey]);
+  const selectedRatings = useMemo(() => new Set(ratingsKey ? ratingsKey.split(",") : []), [ratingsKey]);
+  const selectedAscents = useMemo(() => new Set(ascentsKey ? ascentsKey.split(",") : []), [ascentsKey]);
+
+  function patch(updates: Record<string, string>) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      for (const [k, v] of Object.entries(updates)) {
+        if (!v) next.delete(k); else next.set(k, v);
+      }
+      return next;
+    }, { replace: true });
+  }
 
   useEffect(() => {
     fetchProblems({
@@ -266,6 +281,19 @@ export default function ProblemList() {
       .then((favs) => setFavIds(new Set(favs.map((f) => f.problem_id!).filter((x) => x != null))))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const ratingTests = RATING_OPTIONS.filter((o) => selectedRatings.has(o.key));
+    const ascentTests = ASCENT_OPTIONS.filter((o) => selectedAscents.has(o.key));
+    const byFav = favoritesOnly ? problems.filter((p) => favIds.has(p.id)) : problems;
+    const byRating = ratingTests.length === 0
+      ? byFav
+      : byFav.filter((p) => ratingTests.some((o) => o.test(p.rating_avg)));
+    const computed = ascentTests.length === 0
+      ? byRating
+      : byRating.filter((p) => ascentTests.some((o) => o.test(p.ascents ?? 0)));
+    setVisibleProblems(computed);
+  }, [ratingsKey, ascentsKey, favoritesOnly, problems, favIds]);
 
   const setters = ["ALL", ...Array.from(new Set(problems.map((p) => p.setter ?? "").filter(Boolean)))];
   const activeRatingTests = RATING_OPTIONS.filter((o) => selectedRatings.has(o.key));
@@ -305,21 +333,30 @@ export default function ProblemList() {
       <div className="flex gap-4 mb-6">
         <div>
           <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Grade</label>
-          <GradeCheckboxDropdown selected={selectedGrades} onChange={setSelectedGrades} />
+          <GradeCheckboxDropdown
+            selected={selectedGrades}
+            onChange={(next) => patch({ grades: [...GRADE_OPTIONS].filter((g) => next.has(g)).join(",") })}
+          />
         </div>
         <div>
           <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Rating</label>
-          <RatingCheckboxDropdown selected={selectedRatings} onChange={setSelectedRatings} />
+          <RatingCheckboxDropdown
+            selected={selectedRatings}
+            onChange={(next) => patch({ ratings: [...next].join(",") })}
+          />
         </div>
         <div>
           <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Ascents</label>
-          <AscentsCheckboxDropdown selected={selectedAscents} onChange={setSelectedAscents} />
+          <AscentsCheckboxDropdown
+            selected={selectedAscents}
+            onChange={(next) => patch({ ascents: [...next].join(",") })}
+          />
         </div>
         <div>
           <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Setter</label>
           <select
             value={setter}
-            onChange={(e) => setSetter(e.target.value)}
+            onChange={(e) => patch({ setter: e.target.value === "ALL" ? "" : e.target.value })}
             className="bg-slate-800 border border-slate-700 text-slate-200 rounded px-3 py-1.5 text-sm"
           >
             {setters.map((s) => <option key={s}>{s}</option>)}
@@ -329,7 +366,7 @@ export default function ProblemList() {
           <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Sort</label>
           <select
             value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
+            onChange={(e) => patch({ sort: e.target.value === "created_desc" ? "" : e.target.value })}
             className="bg-slate-800 border border-slate-700 text-slate-200 rounded px-3 py-1.5 text-sm"
           >
             {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -337,7 +374,7 @@ export default function ProblemList() {
         </div>
         <div className="flex items-end">
           <button
-            onClick={() => setFavoritesOnly((v) => !v)}
+            onClick={() => patch({ fav: favoritesOnly ? "" : "1" })}
             className={`px-3 py-1.5 rounded text-sm transition-colors flex items-center gap-1.5 border ${
               favoritesOnly
                 ? "bg-yellow-600/20 border-yellow-700/50 text-yellow-400"

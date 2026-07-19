@@ -7,8 +7,10 @@ interface ProblemStore {
   current: Problem | null;
   loading: boolean;
   error: string | null;
+  visibleProblems: Problem[];
 
   fetchProblems: (filters?: { grades?: string; setter?: string; sort?: SortKey }) => Promise<void>;
+  setVisibleProblems: (problems: Problem[]) => void;
   fetchProblem: (id: number) => Promise<void>;
   createProblem: (data: Partial<Problem>) => Promise<Problem>;
   updateProblem: (id: number, data: Partial<Problem>) => Promise<void>;
@@ -29,6 +31,9 @@ export const useProblemStore = create<ProblemStore>((set, _get) => ({
   current: null,
   loading: false,
   error: null,
+  visibleProblems: [],
+
+  setVisibleProblems: (visibleProblems) => set({ visibleProblems }),
 
   fetchProblems: async (filters) => {
     set({ loading: true, error: null });
