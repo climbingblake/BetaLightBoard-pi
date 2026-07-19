@@ -244,6 +244,7 @@ export default function ProblemList() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [favIds, setFavIds] = useState<Set<number>>(new Set());
+  const [favItemIds, setFavItemIds] = useState<Map<number, number>>(new Map()); // problem_id → favorite.id
   const navigate = useNavigate();
 
   // All filter state lives in the URL — back button restores it for free
@@ -278,9 +279,28 @@ export default function ProblemList() {
 
   useEffect(() => {
     api.favorites.list("problem")
-      .then((favs) => setFavIds(new Set(favs.map((f) => f.problem_id!).filter((x) => x != null))))
+      .then((favs) => {
+        const ids = new Set(favs.map((f) => f.problem_id!).filter((x) => x != null));
+        const itemMap = new Map(favs.filter((f) => f.problem_id != null).map((f) => [f.problem_id!, f.id]));
+        setFavIds(ids);
+        setFavItemIds(itemMap);
+      })
       .catch(() => {});
   }, []);
+
+  async function toggleFav(problemId: number, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (favIds.has(problemId)) {
+      const favId = favItemIds.get(problemId)!;
+      await api.favorites.remove(favId);
+      setFavIds((prev) => { const s = new Set(prev); s.delete(problemId); return s; });
+      setFavItemIds((prev) => { const m = new Map(prev); m.delete(problemId); return m; });
+    } else {
+      const fav = await api.favorites.add({ problem_id: problemId });
+      setFavIds((prev) => new Set(prev).add(problemId));
+      setFavItemIds((prev) => new Map(prev).set(problemId, fav.id));
+    }
+  }
 
   useEffect(() => {
     const ratingTests = RATING_OPTIONS.filter((o) => selectedRatings.has(o.key));
@@ -398,11 +418,19 @@ export default function ProblemList() {
           >
             <div className="flex items-start justify-between mb-2">
               <span className="text-slate-100 font-medium truncate">{p.name || "Untitled"}</span>
-              {p.grade && (
-                <span className="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded ml-2 shrink-0">
-                  {p.grade}
-                </span>
-              )}
+              <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                {p.grade && (
+                  <span className="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded">
+                    {p.grade}
+                  </span>
+                )}
+                <button
+                  onClick={(e) => toggleFav(p.id, e)}
+                  className={`text-sm leading-none transition-colors ${favIds.has(p.id) ? "text-yellow-400" : "text-slate-600 hover:text-slate-400"}`}
+                >
+                  {favIds.has(p.id) ? "★" : "☆"}
+                </button>
+              </div>
             </div>
             {p.setter && (
               <p className="text-xs text-slate-500 mb-1">by {p.setter}</p>
