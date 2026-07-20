@@ -120,9 +120,18 @@ class AnimationController:
 
     def _loop(self, name: str):
         handlers = {
-            "rainbow":   self._rainbow,
-            "chase":     self._chase,
-            "iceflakes": self._iceflakes,
+            "rainbow":       self._rainbow,
+            "chase":         self._chase,
+            "iceflakes":     self._iceflakes,
+            "fire":          self._fire,
+            "space_invader": self._space_invader,
+            "matrix_rain":   self._matrix_rain,
+            "police_lights": self._police_lights,
+            "heartbeat":     self._heartbeat,
+            "game_of_life":  self._game_of_life,
+            "comet":         self._comet,
+            "starfield_warp": self._starfield_warp,
+            "bouncing_ball": self._bouncing_ball,
         }
         fn = handlers.get(name)
         if fn is None:
@@ -169,6 +178,252 @@ class AnimationController:
             step = (step + 1) % 200
             time.sleep(0.2)
 
+    def _fire(self):
+        ROWS, COLS = 10, 20
+        heat = [[0] * COLS for _ in range(ROWS)]
+        while not self._stop.is_set():
+            # Propagate heat upward with cooling
+            new_heat = [[0] * COLS for _ in range(ROWS)]
+            for r in range(ROWS):
+                for c in range(COLS):
+                    below = heat[r + 1][c] if r < ROWS - 1 else heat[r][c]
+                    avg = (heat[r][c] + below) // 2
+                    new_heat[r][c] = max(0, avg - random.randint(5, 25))
+            # Seed bottom 2 rows with hot values
+            for c in range(COLS):
+                new_heat[ROWS - 1][c] = random.randint(160, 255)
+                new_heat[ROWS - 2][c] = random.randint(120, 210)
+            heat = new_heat
+            for r in range(ROWS):
+                for c in range(COLS):
+                    _set_pixel(address_to_pos(r, c), *_heat_to_rgb(heat[r][c]))
+            _show()
+            time.sleep(0.05)
+
+    def _space_invader(self):
+        ROWS, COLS = 10, 20
+        SPRITE_W, SPRITE_H = 8, 8
+        ROW_OFFSET = 1  # center vertically in 10-row grid
+        FRAMES = [
+            [0b00100100, 0b01111110, 0b11011011, 0b11111111,
+             0b10111101, 0b10000001, 0b01000010, 0b00100100],
+            [0b00100100, 0b01111110, 0b11011011, 0b11111111,
+             0b10111101, 0b10000001, 0b00100100, 0b01000010],
+        ]
+        x = -SPRITE_W
+        frame = 0
+        while not self._stop.is_set():
+            for i in range(LED_COUNT):
+                _set_pixel(i, 0, 0, 0)
+            sprite = FRAMES[frame]
+            for r in range(SPRITE_H):
+                grid_row = ROW_OFFSET + r
+                if 0 <= grid_row < ROWS:
+                    for c in range(SPRITE_W):
+                        grid_col = x + c
+                        if 0 <= grid_col < COLS:
+                            if sprite[r] & (0x80 >> c):
+                                _set_pixel(address_to_pos(grid_row, grid_col), 0, 255, 0)
+            _show()
+            x += 1
+            frame = 1 - frame
+            if x >= COLS:
+                x = -SPRITE_W
+            time.sleep(0.15)
+
+    def _matrix_rain(self):
+        ROWS, COLS = 10, 20
+        FADE = 42  # ~6 cells of trail before fading to black
+        bright = [[0] * ROWS for _ in range(COLS)]
+        heads = []  # [col, row]
+        spawn_timer = [random.randint(0, 10) for _ in range(COLS)]
+        while not self._stop.is_set():
+            for col in range(COLS):
+                spawn_timer[col] -= 1
+                if spawn_timer[col] <= 0:
+                    heads.append([col, 0])
+                    spawn_timer[col] = random.randint(4, 14)
+            for col in range(COLS):
+                for row in range(ROWS):
+                    bright[col][row] = max(0, bright[col][row] - FADE)
+            new_heads = []
+            for h in heads:
+                col, row = h
+                if row < ROWS:
+                    bright[col][row] = 255
+                next_row = row + 1
+                if next_row < ROWS + int(255 / FADE) + 1:
+                    new_heads.append([col, next_row])
+            heads = new_heads
+            for col in range(COLS):
+                for row in range(ROWS):
+                    b = bright[col][row]
+                    _set_pixel(address_to_pos(row, col), 0, b, 0)
+            _show()
+            time.sleep(0.05)
+
+    def _police_lights(self):
+        ROWS, COLS = 10, 20
+        phase = 0
+        while not self._stop.is_set():
+            for r in range(ROWS):
+                for c in range(COLS):
+                    pos = address_to_pos(r, c)
+                    if c < 10:
+                        _set_pixel(pos, 255 if phase == 0 else 0, 0, 0)
+                    else:
+                        _set_pixel(pos, 0, 0, 255 if phase == 1 else 0)
+            _show()
+            phase = 1 - phase
+            time.sleep(0.06)
+
+    def _heartbeat(self):
+        while not self._stop.is_set():
+            for _ in range(2):
+                for i in range(LED_COUNT):
+                    _set_pixel(i, 255, 255, 255)
+                _show()
+                time.sleep(0.08)
+                for i in range(LED_COUNT):
+                    _set_pixel(i, 0, 0, 0)
+                _show()
+                time.sleep(0.08)
+            time.sleep(0.70)
+
+    def _game_of_life(self):
+        ROWS, COLS = 10, 20
+
+        def random_board():
+            return [[1 if random.random() < 0.3 else 0 for _ in range(COLS)] for _ in range(ROWS)]
+
+        def step(board):
+            new = [[0] * COLS for _ in range(ROWS)]
+            for r in range(ROWS):
+                for c in range(COLS):
+                    live = sum(
+                        board[(r + dr) % ROWS][(c + dc) % COLS]
+                        for dr in (-1, 0, 1) for dc in (-1, 0, 1)
+                        if not (dr == 0 and dc == 0)
+                    )
+                    if board[r][c]:
+                        new[r][c] = 1 if live in (2, 3) else 0
+                    else:
+                        new[r][c] = 1 if live == 3 else 0
+            return new
+
+        board = random_board()
+        seen: set[tuple] = set()
+        while not self._stop.is_set():
+            for r in range(ROWS):
+                for c in range(COLS):
+                    _set_pixel(address_to_pos(r, c), 0, 255 if board[r][c] else 0, 0)
+            _show()
+            time.sleep(0.2)
+            state = tuple(cell for row in board for cell in row)
+            if not any(state) or state in seen:
+                board = random_board()
+                seen = set()
+            else:
+                seen.add(state)
+                board = step(board)
+
+    def _comet(self):
+        TAIL_LEN = 15
+        head = 0
+        while not self._stop.is_set():
+            for i in range(LED_COUNT):
+                _set_pixel(i, 0, 0, 0)
+            for t in range(TAIL_LEN):
+                tail_pos = (head - t - 1) % LED_COUNT
+                brightness = (TAIL_LEN - t) / TAIL_LEN
+                r, g, b = _wheel(t * 256 // TAIL_LEN)
+                _set_pixel(tail_pos, int(r * brightness), int(g * brightness), int(b * brightness))
+            _set_pixel(head, 255, 255, 255)
+            _show()
+            head = (head + 1) % LED_COUNT
+            time.sleep(0.02)
+
+    def _starfield_warp(self):
+        import math
+        ROWS, COLS = 10, 20
+        NUM_STARS = 40
+        CX, CY = COLS / 2.0 - 0.5, ROWS / 2.0 - 0.5
+        ACCEL = 1.08
+
+        def new_star():
+            angle = random.uniform(0, 2 * math.pi)
+            spd = random.uniform(0.05, 0.15)
+            return {'x': CX, 'y': CY, 'dx': math.cos(angle) * spd, 'dy': math.sin(angle) * spd}
+
+        stars = [new_star() for _ in range(NUM_STARS)]
+        # Stagger initial positions so display isn't empty at start
+        for s in stars:
+            for _ in range(random.randint(0, 18)):
+                s['dx'] *= ACCEL
+                s['dy'] *= ACCEL
+                s['x'] += s['dx']
+                s['y'] += s['dy']
+                if not (0 <= s['x'] < COLS and 0 <= s['y'] < ROWS):
+                    s.update(new_star())
+                    break
+
+        while not self._stop.is_set():
+            for i in range(LED_COUNT):
+                _set_pixel(i, 0, 0, 0)
+            for s in stars:
+                col, row = int(s['x']), int(s['y'])
+                if 0 <= row < ROWS and 0 <= col < COLS:
+                    spd = math.sqrt(s['dx'] ** 2 + s['dy'] ** 2)
+                    bri = min(255, int(spd * 800))
+                    _set_pixel(address_to_pos(row, col), bri, bri, min(255, bri + 25))
+                s['dx'] *= ACCEL
+                s['dy'] *= ACCEL
+                s['x'] += s['dx']
+                s['y'] += s['dy']
+                if not (0 <= s['x'] < COLS and 0 <= s['y'] < ROWS):
+                    s.update(new_star())
+            _show()
+            time.sleep(0.03)
+
+    def _bouncing_ball(self):
+        ROWS, COLS = 10, 20
+        TRAIL_LEN = 6
+        x = float(random.randint(1, COLS - 2))
+        y = float(random.randint(1, ROWS - 2))
+        dx = random.choice([-1, 1]) * random.uniform(0.5, 0.9)
+        dy = random.choice([-1, 1]) * random.uniform(0.5, 0.9)
+        trail: list[tuple[int, int, int]] = []
+        hue = random.randint(0, 255)
+        while not self._stop.is_set():
+            for i in range(LED_COUNT):
+                _set_pixel(i, 0, 0, 0)
+            for i, (tc, tr, th) in enumerate(trail):
+                bri = (i + 1) / (TRAIL_LEN + 1)
+                r, g, b = _wheel(th)
+                _set_pixel(address_to_pos(tr, tc), int(r * bri), int(g * bri), int(b * bri))
+            col, row = int(x), int(y)
+            _set_pixel(address_to_pos(row, col), 255, 255, 255)
+            _show()
+            trail.append((col, row, hue))
+            if len(trail) > TRAIL_LEN:
+                trail.pop(0)
+            x += dx
+            y += dy
+            hue = (hue + 10) % 256
+            if x <= 0:
+                x = 0.0
+                dx = abs(dx)
+            elif x >= COLS - 1:
+                x = float(COLS - 1)
+                dx = -abs(dx)
+            if y <= 0:
+                y = 0.0
+                dy = abs(dy)
+            elif y >= ROWS - 1:
+                y = float(ROWS - 1)
+                dy = -abs(dy)
+            time.sleep(0.04)
+
 
 def _wheel(pos: int) -> tuple[int, int, int]:
     pos = 255 - pos
@@ -179,6 +434,17 @@ def _wheel(pos: int) -> tuple[int, int, int]:
         return (0, pos * 3, 255 - pos * 3)
     pos -= 170
     return (pos * 3, 255 - pos * 3, 0)
+
+
+def _heat_to_rgb(h: int) -> tuple[int, int, int]:
+    """Map heat value 0-255 to black→red→orange→yellow→white."""
+    if h < 64:
+        return (h * 4, 0, 0)
+    if h < 128:
+        return (255, (h - 64) * 2, 0)
+    if h < 192:
+        return (255, 128 + (h - 128) * 2, 0)
+    return (255, 255, (h - 192) * 4)
 
 
 # ---------------------------------------------------------------------------

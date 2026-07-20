@@ -2,9 +2,18 @@ import { useState, useEffect } from "react";
 import { api } from "@/api";
 
 const ROUTINES = [
-  { name: "rainbow",   label: "Rainbow",   color: "from-red-500 via-yellow-400 to-blue-500" },
-  { name: "chase",     label: "Candy Chase", color: "from-pink-500 to-red-500" },
-  { name: "iceflakes", label: "Iceflakes",  color: "from-blue-400 to-cyan-300" },
+  { name: "rainbow",       label: "Rainbow",        color: "from-red-500 via-yellow-400 to-blue-500" },
+  { name: "chase",         label: "Candy Chase",    color: "from-pink-500 to-red-500" },
+  { name: "iceflakes",     label: "Iceflakes",      color: "from-blue-400 to-cyan-300" },
+  { name: "fire",          label: "Fire",           color: "from-orange-600 to-red-700" },
+  { name: "space_invader", label: "Space Invader",  color: "from-green-600 to-emerald-400" },
+  { name: "matrix_rain",   label: "Matrix Rain",    color: "from-green-900 to-green-500" },
+  { name: "police_lights", label: "Police Lights",  color: "from-red-600 to-blue-600" },
+  { name: "heartbeat",     label: "Heartbeat",      color: "from-rose-400 to-pink-200" },
+  { name: "game_of_life",  label: "Game of Life",   color: "from-lime-600 to-green-800" },
+  { name: "comet",         label: "Comet",          color: "from-slate-200 to-blue-300" },
+  { name: "starfield_warp",label: "Starfield Warp", color: "from-indigo-900 to-blue-500" },
+  { name: "bouncing_ball", label: "Bouncing Ball",  color: "from-purple-500 to-pink-500" },
 ];
 
 export default function Routines() {
