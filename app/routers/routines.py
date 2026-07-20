@@ -4,7 +4,11 @@ from app import led_controller as lc
 
 router = APIRouter(prefix="/api/routines", tags=["routines"])
 
-VALID_ROUTINES = {"rainbow", "chase", "iceflakes"}
+VALID_ROUTINES = {
+    "rainbow", "chase", "iceflakes",
+    "fire", "space_invader", "matrix_rain", "police_lights", "heartbeat",
+    "game_of_life", "comet", "starfield_warp", "bouncing_ball",
+}
 
 
 class BrightnessIn(BaseModel):
