@@ -16,7 +16,7 @@ const GRADES = ["V0","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","V11","V
 export default function ProblemEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { current, loading, fetchProblem, updateProblem, addLed, updateLed, deleteLed, loadToBoard, clearBoard } =
+  const { current, loading, fetchProblem, updateProblem, addLed, updateLed, deleteLed, loadToBoard, clearBoard, deleteProblem } =
     useProblemStore();
   const { user } = useAuth();
 
@@ -54,7 +54,6 @@ export default function ProblemEditor() {
     if (!current) return;
 
     if (existing) {
-      // Toggle off if clicking the same color, otherwise recolor
       if (selectedColor === "off" || existing.rgb === selectedColor) {
         await deleteLed(existing.id);
       } else {
@@ -87,6 +86,12 @@ export default function ProblemEditor() {
     setTimeout(() => setStatus(""), 2000);
   }
 
+  async function handleDelete() {
+    if (!current || !confirm("Delete this problem? This cannot be undone.")) return;
+    await deleteProblem(current.id);
+    navigate("/problems");
+  }
+
   if (loading) return <div className="p-6 text-slate-500">Loading...</div>;
   if (!current) return <div className="p-6 text-slate-500">Problem not found.</div>;
 
@@ -95,7 +100,7 @@ export default function ProblemEditor() {
 
   function toggleEditMode() {
     setEditMode((on) => {
-      if (on) setEditing(false); // leaving edit mode closes the meta form
+      if (on) setEditing(false);
       return !on;
     });
   }
@@ -121,9 +126,11 @@ export default function ProblemEditor() {
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-30 bg-black/60" onClick={() => setSidebarOpen(false)} />
       )}
+
       {/* Sidebar */}
       <div className={`w-64 border-l border-slate-800 bg-slate-900 flex-col gap-5 p-5 overflow-y-auto ${sidebarOpen ? "fixed inset-y-0 right-0 z-40 flex" : "hidden lg:flex"}`}>
         <button className="lg:hidden self-end text-slate-500 hover:text-slate-300 text-xl leading-none mb-1" onClick={() => setSidebarOpen(false)}>✕</button>
+
         {/* Problem meta */}
         <div>
           {editing ? (
@@ -149,7 +156,33 @@ export default function ProblemEditor() {
                 rows={2}
                 className="bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm w-full resize-none"
               />
-              <div className="flex gap-2">
+              {canModify && (
+                <button
+                  onClick={toggleEditMode}
+                  className={`w-full py-2 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                    editMode
+                      ? "bg-amber-600 hover:bg-amber-500 text-white"
+                      : "bg-slate-800 hover:bg-slate-700 text-slate-300"
+                  }`}
+                >
+                  <span>{editMode ? "✓ Done editing" : "✎ Edit holds"}</span>
+                </button>
+              )}
+              {liveEdit && (
+                <p className="text-xs text-amber-500/80 -mt-1">Edit mode on — tap the board to place or remove holds.</p>
+              )}
+              {liveEdit && (
+                <ColorPicker selected={selectedColor} onChange={setSelectedColor} />
+              )}
+              {liveEdit && (
+                <button
+                  onClick={handleClear}
+                  className="w-full py-2 hover:bg-red-900/30 text-slate-500 hover:text-red-400 rounded text-sm transition-colors"
+                >
+                  Clear All
+                </button>
+              )}
+              <div className="flex gap-2 mt-2">
                 <button
                   onClick={handleSaveMeta}
                   disabled={saving}
@@ -164,6 +197,14 @@ export default function ProblemEditor() {
                   Cancel
                 </button>
               </div>
+              {canModify && (
+                <button
+                  onClick={handleDelete}
+                  className="w-full py-2 hover:bg-red-900/30 text-slate-600 hover:text-red-400 rounded text-sm transition-colors"
+                >
+                  Delete Problem
+                </button>
+              )}
             </div>
           ) : (
             <div
@@ -190,6 +231,7 @@ export default function ProblemEditor() {
                 <p className="text-xs text-slate-500 mt-2 whitespace-pre-line">{current.description}</p>
               )}
             </div>
+
           )}
           <div className="mt-2">
             <RatingDisplay avg={current.rating_avg} count={current.rating_count} />
@@ -199,70 +241,23 @@ export default function ProblemEditor() {
           </div>
         </div>
 
+        {!editing && (
+          <>
+            <button
+              onClick={handleLoad}
+              className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-sm transition-colors"
+            >
+              Load to Board
+            </button>
 
-        {/* Actions */}
-        <div className="flex flex-col gap-2">
-          <button
-            onClick={handleLoad}
-            className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-sm transition-colors"
-          >
-            Load to Board
-          </button>
-          {liveEdit && (
-          <button
-            onClick={handleClear}
-            className="w-full py-2 hover:bg-red-900/30 text-slate-500 hover:text-red-400 rounded text-sm transition-colors"
-          >
-            Clear All
-          </button>
-          )}
+            {status && (
+              <p className="text-xs text-green-500 text-center">{status}</p>
+            )}
 
-        </div>
-
-
-
-
-        {/* Edit-mode toggle — owners/admins only. Off by default so a stray
-            tap on the board can't alter holds. */}
-        {canModify && (
-          <button
-            onClick={toggleEditMode}
-            className={`w-full py-2 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-              editMode
-                ? "bg-amber-600 hover:bg-amber-500 text-white"
-                : "bg-slate-800 hover:bg-slate-700 text-slate-300"
-            }`}
-          >
-            <span>{editMode ? "✓ Done editing" : "✎ Edit holds"}</span>
-          </button>
+            <ActivityPanel problemId={current.id} onActivity={() => fetchProblem(current.id)} />
+          </>
         )}
-
-        {liveEdit && (
-          <p className="text-xs text-amber-500/80 -mt-2">Edit mode on — tap the board to place or remove holds.</p>
-        )}
-
-        {/* Color picker — only while editing */}
-        {liveEdit ? (
-          <ColorPicker selected={selectedColor} onChange={setSelectedColor} />
-        ) : !canModify ? (
-          ''
-        ) : null}
-
-        {status && (
-          <p className="text-xs text-green-500 text-center">{status}</p>
-        )}
-
-        <ActivityPanel problemId={current.id} onActivity={() => fetchProblem(current.id)} />
-
-        <button
-          onClick={() => navigate(-1)}
-          className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-sm transition-colors"
-        >
-          ← Back
-        </button>
       </div>
-
     </div>
-
   );
 }

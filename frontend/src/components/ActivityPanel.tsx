@@ -22,7 +22,6 @@ export function ActivityPanel({ problemId, routeId, onActivity }: Props) {
   const [sendNote, setSendNote] = useState("");
   const [logginAttempt, setLoggingAttempt] = useState(false);
   const [loggingSend, setLoggingSend] = useState(false);
-  const [showSendForm, setShowSendForm] = useState(false);
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [sessionSel, setSessionSel] = useState("");
   const [addingToSession, setAddingToSession] = useState(false);
@@ -105,7 +104,6 @@ export function ActivityPanel({ problemId, routeId, onActivity }: Props) {
       // A send also records an attempt server-side; reflect that locally.
       api.attempts.list(params).then(setAttempts).catch(() => {});
       setSendNote("");
-      setShowSendForm(false);
       onActivity?.();
     } finally {
       setLoggingSend(false);
@@ -136,18 +134,7 @@ export function ActivityPanel({ problemId, routeId, onActivity }: Props) {
     <>
 
 
-      {/* Favorite */}
-      <button
-        onClick={toggleFavorite}
-        className={`w-full py-2 rounded text-sm transition-colors flex items-center justify-center gap-2 ${
-          favorite
-            ? "bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30"
-            : "bg-slate-800 hover:bg-slate-700 text-slate-400"
-        }`}
-      >
-        <span>{favorite ? "★" : "☆"}</span>
-        <span>{favorite ? "Favorited" : "Add to Favorites"}</span>
-      </button>
+
 
       <hr className="border-slate-800" />
 
@@ -188,7 +175,18 @@ export function ActivityPanel({ problemId, routeId, onActivity }: Props) {
           <p className="text-xs text-slate-600">Log an attempt or send to rate.</p>
         )}
       </div>
-
+      {/* Favorite */}
+      <button
+        onClick={toggleFavorite}
+        className={`w-full py-2 rounded text-sm transition-colors flex items-center justify-center gap-2 ${
+          favorite
+            ? "bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30"
+            : "bg-slate-800 hover:bg-slate-700 text-slate-400"
+        }`}
+      >
+        <span>{favorite ? "★" : "☆"}</span>
+        <span>{favorite ? "Favorited" : "Add to Favorites"}</span>
+      </button>
       <hr className="border-slate-800" />
 
       {/* Attempts */}
@@ -239,33 +237,24 @@ export function ActivityPanel({ problemId, routeId, onActivity }: Props) {
           <span className="text-xs text-slate-500 uppercase tracking-wider">
             Sends ({sends.length})
           </span>
+        </div>
+        <div className="flex flex-col gap-1.5 mb-2">
+          <input
+            type="text"
+            value={sendNote}
+            onChange={(e) => setSendNote(e.target.value)}
+            placeholder="Note (optional)"
+            className="bg-slate-800 border border-slate-700 text-slate-200 rounded px-2 py-1.5 text-xs w-full"
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); logSend(); } }}
+          />
           <button
-            onClick={() => setShowSendForm((s) => !s)}
-            className="text-xs text-green-600 hover:text-green-400 transition-colors"
+            onClick={logSend}
+            disabled={loggingSend}
+            className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors disabled:opacity-50"
           >
-            + Send
+            {loggingSend ? "Logging…" : "+ Log Send"}
           </button>
         </div>
-        {showSendForm && (
-          <div className="flex flex-col gap-1.5 mb-2">
-            <input
-              type="text"
-              value={sendNote}
-              onChange={(e) => setSendNote(e.target.value)}
-              placeholder="Note (optional)"
-              className="bg-slate-800 border border-slate-700 text-slate-200 rounded px-2 py-1.5 text-xs w-full"
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); logSend(); } }}
-              autoFocus
-            />
-            <button
-              onClick={logSend}
-              disabled={loggingSend}
-              className="w-full py-1.5 bg-green-700 hover:bg-green-600 text-white rounded text-xs transition-colors disabled:opacity-50"
-            >
-              {loggingSend ? "Saving…" : "Record Send"}
-            </button>
-          </div>
-        )}
         {sends.map((s) => (
           <div key={s.id} className="text-xs text-green-700 flex justify-between items-center py-0.5 group">
             <span className="text-green-500">{s.notes || "sent"}</span>

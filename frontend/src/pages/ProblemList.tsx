@@ -3,8 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useProblemStore } from "@/store/useProblemStore";
 import { RatingDisplay } from "@/components/RatingStars";
 import { fmtSendRate, fmtRelative } from "@/lib/format";
-import { canEdit } from "@/lib/perms";
-import { useAuth } from "@/store/useAuth";
 import { api } from "@/api";
 import type { SortKey } from "@/api";
 
@@ -240,8 +238,7 @@ function AscentsCheckboxDropdown({
 }
 
 export default function ProblemList() {
-  const { problems, loading, fetchProblems, deleteProblem, loadToBoard, setVisibleProblems } = useProblemStore();
-  const { user } = useAuth();
+  const { problems, loading, fetchProblems, loadToBoard, setVisibleProblems } = useProblemStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [favIds, setFavIds] = useState<Set<number>>(new Set());
   const [favItemIds, setFavItemIds] = useState<Map<number, number>>(new Map()); // problem_id → favorite.id
@@ -325,13 +322,6 @@ export default function ProblemList() {
   const visible = activeAscentTests.length === 0
     ? byRating
     : byRating.filter((p) => activeAscentTests.some((o) => o.test(p.ascents ?? 0)));
-
-  async function handleDelete(id: number, e: React.MouseEvent) {
-    e.stopPropagation();
-    if (confirm("Delete this problem?")) {
-      await deleteProblem(id);
-    }
-  }
 
   async function handleLoad(id: number, e: React.MouseEvent) {
     e.stopPropagation();
@@ -453,14 +443,6 @@ export default function ProblemList() {
               >
                 Load
               </button>
-              {canEdit(user, p.created_by) && (
-                <button
-                  onClick={(e) => handleDelete(p.id, e)}
-                  className="py-1 px-2 hover:bg-red-900/40 text-slate-500 hover:text-red-400 rounded text-xs transition-colors"
-                >
-                  ✕
-                </button>
-              )}
             </div>
           </div>
         ))}
