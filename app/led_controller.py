@@ -32,6 +32,11 @@ COLORS: dict[str, tuple[int, int, int]] = {
 
 SIMULATE = os.getenv("LED_SIMULATE", "0") == "1"
 
+# Data pin, as a Blinka board name (D13 = GPIO13 = physical pin 33). GPIO10/MOSI
+# (pin 19) stopped driving the strip, so the default moved to D13. Override
+# with LED_PIN in the service environment if the wiring changes again.
+LED_PIN = os.getenv("LED_PIN", "D13")
+
 _strip = None
 
 
@@ -41,13 +46,13 @@ def _init_strip():
         import board
         import neopixel
         _strip = neopixel.NeoPixel(
-            board.MOSI,
+            getattr(board, LED_PIN),
             LED_COUNT,
             brightness=LED_BRIGHTNESS,
             auto_write=False,
             pixel_order=neopixel.RGB,
         )
-        logger.info("adafruit neopixel strip initialized via SPI")
+        logger.info(f"adafruit neopixel strip initialized on {LED_PIN}")
     except Exception as e:
         logger.warning(f"neopixel not available ({e}), running in simulate mode")
         SIMULATE = True

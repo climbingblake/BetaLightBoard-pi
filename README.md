@@ -98,7 +98,7 @@ Open a browser on the local network: `http://<pi-ip>/`
 
 ## LED wiring
 
-- Data line: GPIO 10 (MOSI, physical pin 19)
+- Data line: GPIO 13 (physical pin 33, ground on pin 34). Set `LED_PIN` to use a different Blinka pin name (GPIO 10 / MOSI, pin 19, is no longer used)
 - No level shifter required for 5V strips when testing, but a 74AHCT125 is recommended for production
 - Power: 5V strips drawing up to 60mA/LED at full white. For a 200-LED strip inject power at multiple points — every 10–15 feet as home runs back to the PSU
 - Strip color order: **RGB** (not GRB) — already configured in `led_controller.py`
