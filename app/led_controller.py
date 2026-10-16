@@ -87,6 +87,14 @@ def set_brightness(level: int):
         _strip.show()
 
 
+def apply_brightness_setting(value) -> None:
+    """Apply a stored BRIGHTNESS setting (0-255, as text) to the strip."""
+    try:
+        set_brightness(int(value))
+    except (TypeError, ValueError):
+        logger.warning(f"Ignoring invalid BRIGHTNESS setting: {value!r}")
+
+
 def all_off():
     if SIMULATE:
         return

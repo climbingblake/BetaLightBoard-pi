@@ -139,6 +139,13 @@ def init_db():
 async def lifespan(app: FastAPI):
     init_db()
     led_controller.startup()
+    db = SessionLocal()
+    try:
+        s = db.query(Setting).filter(Setting.key == "BRIGHTNESS").first()
+        if s:
+            led_controller.apply_brightness_setting(s.value)
+    finally:
+        db.close()
     logger.info("LED controller started")
     yield
     led_controller.animation.stop()

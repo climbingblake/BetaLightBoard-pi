@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Setting, SETTING_DEFAULTS
+from app import led_controller as lc
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -32,4 +33,6 @@ def update_settings(body: SettingsUpdateIn, db: Session = Depends(get_db)):
         else:
             db.add(Setting(key=key, value=value))
     db.commit()
+    if "BRIGHTNESS" in body.values:
+        lc.apply_brightness_setting(body.values["BRIGHTNESS"])
     return db.query(Setting).all()
