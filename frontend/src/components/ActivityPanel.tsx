@@ -53,14 +53,14 @@ export function ActivityPanel({ problemId, routeId, onActivity }: Props) {
     setAddingToSession(true);
     try {
       if (sessionSel === "__new__") {
-        const s = await api.sessions.create({ name: "New Session" });
+        const s = await api.sessions.create({ name: "New Workout" });
         await api.sessions.addItem(s.id, params);
         setSessions((prev) => [s, ...prev]);
         setSessionMsg(`Added to "${s.name}"`);
       } else {
         const target = sessions.find((s) => String(s.id) === sessionSel);
         await api.sessions.addItem(Number(sessionSel), params);
-        setSessionMsg(`Added to "${target?.name ?? "session"}"`);
+        setSessionMsg(`Added to "${target?.name ?? "workout"}"`);
       }
       setSessionSel("");
       setTimeout(() => setSessionMsg(""), 2500);
@@ -140,18 +140,18 @@ export function ActivityPanel({ problemId, routeId, onActivity }: Props) {
 
       {/* Add to a session (workout) */}
       <div>
-        <span className="text-xs text-slate-500 uppercase tracking-wider block mb-2">Add to Session</span>
+        <span className="text-xs text-slate-500 uppercase tracking-wider block mb-2">Add to Workout</span>
         <div className="flex gap-1.5">
           <select
             value={sessionSel}
             onChange={(e) => setSessionSel(e.target.value)}
             className="flex-1 min-w-0 bg-slate-800 border border-slate-700 text-slate-200 rounded px-2 py-1.5 text-xs"
           >
-            <option value="">Choose a session…</option>
+            <option value="">Choose a workout…</option>
             {mySessions.map((s) => (
               <option key={s.id} value={s.id}>{s.name || "Untitled"}</option>
             ))}
-            <option value="__new__">+ New session</option>
+            <option value="__new__">+ New workout</option>
           </select>
           <button
             onClick={addToSession}

@@ -32,7 +32,7 @@ export default function SessionEditor() {
 
   if (!session) return <div className="p-6 text-slate-500">Loading...</div>;
   if (!canEdit(user, session.created_by)) {
-    return <div className="p-6 text-slate-500">You can only edit sessions you created.</div>;
+    return <div className="p-6 text-slate-500">You can only edit workouts you created.</div>;
   }
 
   async function toggleShare() {
@@ -75,7 +75,7 @@ export default function SessionEditor() {
   return (
     <div className="max-w-2xl mx-auto p-6 mt-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-slate-100">Edit Session</h1>
+        <h1 className="text-2xl font-semibold text-slate-100">Edit Workout</h1>
         <button onClick={() => navigate(-1)} className="text-sm text-slate-500 hover:text-slate-300">← Back</button>
       </div>
 
@@ -84,7 +84,7 @@ export default function SessionEditor() {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Session name"
+          placeholder="Workout name"
           className="bg-slate-800 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm"
         />
         <textarea

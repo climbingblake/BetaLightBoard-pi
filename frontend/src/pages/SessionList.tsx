@@ -81,13 +81,13 @@ export default function SessionList() {
 
   async function handleCreate() {
     setCreating(true);
-    const s = await api.sessions.create({ name: "New Session" });
+    const s = await api.sessions.create({ name: "New Workout" });
     navigate(`/sessions/${s.id}/edit`);
   }
 
   async function handleDelete(id: number, e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm("Delete this session?")) return;
+    if (!confirm("Delete this workout?")) return;
     await api.sessions.delete(id);
     refresh();
   }
@@ -104,13 +104,13 @@ export default function SessionList() {
   return (
     <div className="max-w-2xl mx-auto p-6 mt-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-slate-100">Sessions</h1>
+        <h1 className="text-2xl font-semibold text-slate-100">Workouts</h1>
         <button
           onClick={handleCreate}
           disabled={creating}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-medium transition-colors disabled:opacity-50"
         >
-          {creating ? "Creating…" : "+ New Session"}
+          {creating ? "Creating…" : "+ New Workout"}
         </button>
       </div>
 
@@ -149,7 +149,7 @@ export default function SessionList() {
       {loading ? (
         <div className="text-slate-500">Loading...</div>
       ) : sessions.length === 0 ? (
-        <p className="text-slate-500 text-sm">No sessions match these filters.</p>
+        <p className="text-slate-500 text-sm">No workouts match these filters.</p>
       ) : (
         <div className="flex flex-col gap-2">
           {sessions.map((s) => {

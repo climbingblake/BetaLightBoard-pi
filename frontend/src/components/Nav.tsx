@@ -9,7 +9,7 @@ export function Nav() {
     { to: "/",         label: "Dashboard" },
     { to: "/problems", label: "Problems" },
     { to: "/routes",   label: "Routes" },
-    { to: "/sessions", label: "Sessions" },
+    { to: "/sessions", label: "Workouts" },
     { to: "/generate", label: "Random" },
     { to: "/routines", label: "Routines" },
     { to: "/settings", label: "Settings" },

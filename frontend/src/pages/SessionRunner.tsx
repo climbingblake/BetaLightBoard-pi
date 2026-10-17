@@ -95,13 +95,13 @@ export default function SessionRunner() {
   }
 
   if (!session) return <div className="p-6 text-slate-500">Loading...</div>;
-  if (session.items.length === 0) return <div className="p-6 text-slate-500">This session has no items.</div>;
+  if (session.items.length === 0) return <div className="p-6 text-slate-500">This workout has no items.</div>;
 
   if (finished) {
     const sentItems = session.items.filter((i) => sent[i.id]);
     return (
       <div className="max-w-md mx-auto p-6 mt-12 text-center">
-        <h1 className="text-2xl font-semibold text-slate-100 mb-2">Session complete</h1>
+        <h1 className="text-2xl font-semibold text-slate-100 mb-2">Workout complete</h1>
         <p className="text-slate-500 text-sm mb-6">{session.name}</p>
         <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 mb-6 text-left">
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">
@@ -121,7 +121,7 @@ export default function SessionRunner() {
           )}
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 mb-6">
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Rate this session</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Rate this workout</p>
           <div className="flex justify-center">
             <RatingInput value={myStars} onChange={rateSession} />
           </div>
@@ -174,7 +174,7 @@ export default function SessionRunner() {
         <hr className="border-slate-800" />
 
         <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Rate this session</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Rate this workout</p>
           <RatingInput value={myStars} onChange={rateSession} disabled={busy} />
         </div>
 

@@ -73,7 +73,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <StatCard label="Problems" value={d.totals.problems} sub={plus(d.new_last_7.problems)} spark={d.sparklines.problems} color={ACCENT.blue} onClick={() => navigate("/problems")} />
         <StatCard label="Routes" value={d.totals.routes} sub={plus(d.new_last_7.routes)} spark={d.sparklines.routes} color={ACCENT.orange} onClick={() => navigate("/routes")} />
-        <StatCard label="Sessions" value={d.totals.sessions} sub={plus(d.new_last_7.sessions)} spark={d.sparklines.sessions} color={ACCENT.violet} onClick={() => navigate("/sessions")} />
+        <StatCard label="Workouts" value={d.totals.sessions} sub={plus(d.new_last_7.sessions)} spark={d.sparklines.sessions} color={ACCENT.violet} onClick={() => navigate("/sessions")} />
         <StatCard label="Sends" value={d.totals.sends} sub={plus(d.new_last_7.sends)} spark={d.sparklines.sends} color={ACCENT.green} />
       </div>
 

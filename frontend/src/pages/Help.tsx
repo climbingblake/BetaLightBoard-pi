@@ -23,7 +23,7 @@ const TABS: { to: string; label: string; desc: string }[] = [
   { to: "/", label: "Dashboard", desc: "At-a-glance stats: totals, grade spread, sends over time, and recent activity." },
   { to: "/problems", label: "Problems", desc: "Boulder problems shown as lit holds. Browse, set, and log your climbs." },
   { to: "/routes", label: "Routes", desc: "Timed hold-by-hold sequences that play across the board." },
-  { to: "/sessions", label: "Sessions", desc: "Ordered workouts that string problems and routes together." },
+  { to: "/sessions", label: "Workouts", desc: "Ordered workouts that string problems and routes together." },
   { to: "/generate", label: "Random", desc: "Auto-generate a fresh problem with a few sliders." },
   { to: "/routines", label: "Routines", desc: "Ambient light shows and board brightness." },
   { to: "/settings", label: "Settings", desc: "Board size, users, updates, and backups." },
@@ -80,22 +80,22 @@ export default function Help() {
         />
       </Section>
 
-      <Section title="Build & run a session">
-        <p>A session is an ordered workout made of problems and routes.</p>
+      <Section title="Build & run a workout">
+        <p>A workout is an ordered sequence of problems and routes.</p>
         <Steps
           items={[
-            <>On <span className="text-slate-100">Sessions</span>, tap <span className="text-slate-100">+ New Session</span>, then name it.</>,
+            <>On <span className="text-slate-100">Workouts</span>, tap <span className="text-slate-100">+ New Workout</span>, then name it.</>,
             <>Choose <span className="text-slate-100">Problem</span> or <span className="text-slate-100">Route</span>, pick one, and tap <span className="text-slate-100">+ Add</span>. Repeat to fill the workout.</>,
             <>Drag the ⠿ handle to reorder items; tap ✕ to remove one.</>,
-            <>Back on the Sessions list, tap <span className="text-orange-400">▶ Run</span>. Each item loads on the board in turn — log a send or attempt, then advance to the next.</>,
-            <>You can also rate the whole session while running it or on the completion screen.</>,
+            <>Back on the Workouts list, tap <span className="text-orange-400">▶ Run</span>. Each item loads on the board in turn — log a send or attempt, then advance to the next.</>,
+            <>You can also rate the whole workout while running it or on the completion screen.</>,
           ]}
         />
-        <p className="text-xs text-slate-500">Shortcut: on any problem or route, use <span className="text-slate-300">Add to Session</span> to drop it straight into an existing or new session. Sessions are private until an admin shares them.</p>
+        <p className="text-xs text-slate-500">Shortcut: on any problem or route, use <span className="text-slate-300">Add to Workout</span> to drop it straight into an existing or new workout. Workouts are private until an admin shares them.</p>
       </Section>
 
       <Section title="Log sends & attempts">
-        <p>Tracking is in the side panel on any problem or route (and in the session runner).</p>
+        <p>Tracking is in the side panel on any problem or route (and in the workout runner).</p>
         <Steps
           items={[
             <><span className="text-slate-100">Attempt</span> — add an optional note and tap <span className="text-slate-100">+ Log Attempt</span> for each try.</>,
@@ -113,7 +113,7 @@ export default function Help() {
         </p>
         <p>
           Under <span className="text-slate-100">Settings → Backup &amp; Export</span> you can export your problems,
-          routes, and sessions to a JSON file so you never lose your work. Admins can also download a full
+          routes, and workouts to a JSON file so you never lose your work. Admins can also download a full
           database snapshot, adjust board size and brightness, manage users, and pull updates.
         </p>
       </Section>

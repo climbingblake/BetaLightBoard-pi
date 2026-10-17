@@ -232,8 +232,8 @@ export default function Settings() {
         <h2 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-2">Backup &amp; Export</h2>
         <p className="text-xs text-slate-600 mb-4">
           {currentUser?.is_admin
-            ? "Export problems, routes & sessions as JSON, or download a full database snapshot."
-            : "Export your problems, routes & sessions as JSON so you don't lose them."}
+            ? "Export problems, routes & workouts as JSON, or download a full database snapshot."
+            : "Export your problems, routes & workouts as JSON so you don't lose them."}
         </p>
         <div className="flex flex-wrap gap-3">
           <button
