@@ -17,6 +17,7 @@ const ROUTINES = [
   { name: "twinkle",       label: "Twinkle",        color: "from-slate-300 to-indigo-400" },
   { name: "fireflies",     label: "Fireflies",      color: "from-amber-400 to-lime-300" },
   { name: "aurora",        label: "Aurora",         color: "from-emerald-500 to-teal-400" },
+  { name: "image",         label: "Image",          color: "from-slate-700 via-teal-600 to-amber-200" },
 ];
 
 export default function Routines() {
