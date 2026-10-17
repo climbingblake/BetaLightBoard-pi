@@ -42,6 +42,7 @@ export default function ProblemEditor() {
   const [status, setStatus] = useState("");
   const [rows, setRows] = useState(10);
   const [cols, setCols] = useState(10);
+  const [autoLoad, setAutoLoad] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -49,8 +50,10 @@ export default function ProblemEditor() {
     api.settings.list().then((settings) => {
       const r = settings.find((s) => s.key === "NUMB_ROWS")?.value;
       const c = settings.find((s) => s.key === "NUMB_COLS")?.value;
+      const a = settings.find((s) => s.key === "AUTO_LOAD")?.value;
       if (r) setRows(Number(r));
       if (c) setCols(Number(c));
+      setAutoLoad(a === "1");
     });
   }, [id]);
 
@@ -135,6 +138,9 @@ export default function ProblemEditor() {
   const next = idx >= 0 && idx < list.length - 1 ? list[idx + 1] : null;
 
   function go(targetId: number) {
+    if (autoLoad) {
+      api.problems.load(targetId).catch(() => {});
+    }
     navigate({ pathname: `/problems/${targetId}`, search: searchParams.toString() });
   }
 

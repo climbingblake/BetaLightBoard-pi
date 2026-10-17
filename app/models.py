@@ -94,6 +94,7 @@ SETTING_DEFAULTS = {
     "NUMB_ROWS": "10",
     "NUMB_COLS": "20",
     "BRIGHTNESS": "42",
+    "AUTO_LOAD": "0",
 }
 
 

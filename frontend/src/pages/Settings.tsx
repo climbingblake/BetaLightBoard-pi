@@ -128,6 +128,7 @@ export default function Settings() {
     NUMB_ROWS: "Number of rows",
     NUMB_COLS: "Number of columns",
     BRIGHTNESS: "LED brightness (0-255)",
+    AUTO_LOAD: "Auto Load",
   };
 
   return (
@@ -135,19 +136,36 @@ export default function Settings() {
       <h1 className="text-2xl font-semibold text-slate-100 mb-6">Settings</h1>
 
       <form onSubmit={handleSave} className="flex flex-col gap-4 mb-10">
-        {settings.map((s) => (
-          <div key={s.key}>
-            <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">
-              {LABELS[s.key] ?? s.key}
-            </label>
-            <input
-              type="text"
-              value={values[s.key] ?? ""}
-              onChange={(e) => setValues((v) => ({ ...v, [s.key]: e.target.value }))}
-              className="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm"
-            />
-          </div>
-        ))}
+        {settings.map((s) =>
+          s.key === "AUTO_LOAD" ? (
+            <div key={s.key}>
+              <label className="flex items-center justify-between cursor-pointer">
+                <span className="text-sm text-slate-200">{LABELS[s.key] ?? s.key}</span>
+                <input
+                  type="checkbox"
+                  checked={values[s.key] === "1"}
+                  onChange={(e) => setValues((v) => ({ ...v, [s.key]: e.target.checked ? "1" : "0" }))}
+                  className="h-4 w-4 accent-blue-500"
+                />
+              </label>
+              <p className="text-xs text-slate-600 mt-1">
+                Load each problem to the board automatically when using next or previous.
+              </p>
+            </div>
+          ) : (
+            <div key={s.key}>
+              <label className="text-xs text-slate-500 uppercase tracking-wider block mb-1">
+                {LABELS[s.key] ?? s.key}
+              </label>
+              <input
+                type="text"
+                value={values[s.key] ?? ""}
+                onChange={(e) => setValues((v) => ({ ...v, [s.key]: e.target.value }))}
+                className="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded px-3 py-2 text-sm"
+              />
+            </div>
+          )
+        )}
         <div className="pt-2 flex items-center gap-4">
           <button
             type="submit"
