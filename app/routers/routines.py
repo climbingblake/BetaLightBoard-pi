@@ -8,6 +8,7 @@ VALID_ROUTINES = {
     "rainbow", "chase", "iceflakes",
     "fire", "space_invader", "matrix_rain", "police_lights", "heartbeat",
     "game_of_life", "comet", "starfield_warp", "bouncing_ball",
+    "twinkle", "fireflies", "aurora",
 }
 
 

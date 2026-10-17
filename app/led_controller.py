@@ -38,6 +38,10 @@ SIMULATE = os.getenv("LED_SIMULATE", "0") == "1"
 LED_PIN = os.getenv("LED_PIN", "D13")
 
 _strip = None
+# Serializes anything that talks to the strip hardware: the animation threads and
+# the HTTP handlers (brightness, LED edits) all call show(), and two overlapping
+# writes corrupt a frame.
+_strip_lock = threading.RLock()
 
 
 def _init_strip():
@@ -75,7 +79,8 @@ def _set_pixel(pos: int, r: int, g: int, b: int):
 
 def _show():
     if not SIMULATE:
-        _strip.show()
+        with _strip_lock:
+            _strip.show()
 
 
 def set_led(row: int, col: int, color: str, num_cols: int = 20):
@@ -88,8 +93,9 @@ def set_led(row: int, col: int, color: str, num_cols: int = 20):
 def set_brightness(level: int):
     """level is 0-255 (from old API); convert to 0.0-1.0 for adafruit."""
     if not SIMULATE:
-        _strip.brightness = max(0, min(255, level)) / 255
-        _strip.show()
+        with _strip_lock:
+            _strip.brightness = max(0, min(255, level)) / 255
+            _strip.show()
 
 
 def apply_brightness_setting(value) -> None:
@@ -103,8 +109,9 @@ def apply_brightness_setting(value) -> None:
 def all_off():
     if SIMULATE:
         return
-    _strip.fill((0, 0, 0))
-    _strip.show()
+    with _strip_lock:
+        _strip.fill((0, 0, 0))
+        _strip.show()
 
 
 # ---------------------------------------------------------------------------
@@ -145,6 +152,9 @@ class AnimationController:
             "comet":         self._comet,
             "starfield_warp": self._starfield_warp,
             "bouncing_ball": self._bouncing_ball,
+            "twinkle":       self._twinkle,
+            "fireflies":     self._fireflies,
+            "aurora":        self._aurora,
         }
         fn = handlers.get(name)
         if fn is None:
@@ -169,10 +179,12 @@ class AnimationController:
             for i in range(LED_COUNT):
                 _set_pixel(i, 255, 255, 255)
             for i in range(0, LED_COUNT, 3):
-                _set_pixel(i + q, 255, 0, 0)
+                if i + q < LED_COUNT:
+                    _set_pixel(i + q, 255, 0, 0)
             _show()
             for i in range(0, LED_COUNT, 3):
-                _set_pixel(i + q, 0, 0, 0)
+                if i + q < LED_COUNT:
+                    _set_pixel(i + q, 0, 0, 0)
             q = (q + 1) % 3
             time.sleep(0.2)
 
@@ -436,6 +448,103 @@ class AnimationController:
                 y = float(ROWS - 1)
                 dy = -abs(dy)
             time.sleep(0.04)
+
+    def _twinkle(self):
+        """Dim, slow twinkling stars. Each LED ramps up to a random low peak in
+        a soft white/blue/amber, then fades back out at a staggered cadence."""
+        level = [0.0] * LED_COUNT
+        direction = [0] * LED_COUNT
+        peak = [0.0] * LED_COUNT
+        color = [(0, 0, 0)] * LED_COUNT
+        PALETTE = [
+            (140, 142, 155),   # cool white
+            (150, 138, 112),   # warm white
+            (115, 150, 165),   # pale blue
+            (150, 128, 90),    # pale amber
+        ]
+        while not self._stop.is_set():
+            for i in range(LED_COUNT):
+                if level[i] <= 0.0:
+                    if random.random() < 0.004:
+                        direction[i] = 1
+                        peak[i] = random.uniform(0.6, 1.0)
+                        level[i] = 0.01
+                        color[i] = random.choice(PALETTE)
+                elif direction[i] == 1:
+                    level[i] += random.uniform(0.006, 0.025)
+                    if level[i] >= peak[i]:
+                        direction[i] = -1
+                else:
+                    level[i] -= random.uniform(0.004, 0.015)
+                    if level[i] <= 0.0:
+                        level[i] = 0.0
+                        direction[i] = 0
+            for i in range(LED_COUNT):
+                lv = level[i]
+                r, g, b = color[i]
+                _set_pixel(i, int(r * lv), int(g * lv), int(b * lv))
+            _show()
+            time.sleep(0.03)
+
+    def _fireflies(self):
+        """A few dim amber fireflies that flash briefly, rest, and drift very
+        slowly across the board."""
+        ROWS, COLS = 10, 20
+        NUM = 12
+        flies = [{
+            'row': random.uniform(1, ROWS - 2),
+            'col': random.uniform(1, COLS - 2),
+            'phase': random.uniform(0.0, 4.0),
+            'period': random.uniform(3.0, 6.0),
+        } for _ in range(NUM)]
+        while not self._stop.is_set():
+            for i in range(LED_COUNT):
+                _set_pixel(i, 0, 0, 0)
+            for f in flies:
+                f['phase'] += 0.05
+                if f['phase'] >= f['period']:
+                    f['phase'] = 0.0
+                if random.random() < 0.02:
+                    f['row'] = min(float(ROWS - 1), max(0.0, f['row'] + random.uniform(-0.5, 0.5)))
+                    f['col'] = min(float(COLS - 1), max(0.0, f['col'] + random.uniform(-0.5, 0.5)))
+                t = f['phase'] / f['period']  # 0..1 through the cycle
+                if t < 0.10:
+                    b = t / 0.10
+                elif t < 0.35:
+                    b = 1.0 - (t - 0.10) / 0.25
+                else:
+                    b = 0.0
+                if b > 0.0:
+                    b = b * b * (3.0 - 2.0 * b)  # smoothstep
+                    row, col = int(round(f['row'])), int(round(f['col']))
+                    if 0 <= row < ROWS and 0 <= col < COLS:
+                        _set_pixel(address_to_pos(row, col), int(150 * b), int(190 * b), int(40 * b))
+            _show()
+            time.sleep(0.05)
+
+    def _aurora(self):
+        """Slow, dim northern-lights curtains drifting across the board."""
+        import math
+        ROWS, COLS = 10, 20
+        t = 0.0
+        while not self._stop.is_set():
+            for r in range(ROWS):
+                vband = 1.0 - abs(r - (ROWS - 1) / 2.0) / (ROWS / 2.0)
+                for c in range(COLS):
+                    wave = (
+                        math.sin(c * 0.35 + t * 0.6)
+                        + math.sin(c * 0.12 - t * 0.4 + r * 0.8)
+                    ) / 2.0
+                    v = (wave * 0.5 + 0.5) * vband
+                    _set_pixel(
+                        address_to_pos(r, c),
+                        int(30 * v),
+                        int(170 * v),
+                        int(120 * v),
+                    )
+            _show()
+            t += 0.05
+            time.sleep(0.05)
 
 
 def _wheel(pos: int) -> tuple[int, int, int]:

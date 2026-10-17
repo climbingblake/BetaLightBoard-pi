@@ -14,6 +14,9 @@ const ROUTINES = [
   { name: "comet",         label: "Comet",          color: "from-slate-200 to-blue-300" },
   { name: "starfield_warp",label: "Starfield Warp", color: "from-indigo-900 to-blue-500" },
   { name: "bouncing_ball", label: "Bouncing Ball",  color: "from-purple-500 to-pink-500" },
+  { name: "twinkle",       label: "Twinkle",        color: "from-slate-300 to-indigo-400" },
+  { name: "fireflies",     label: "Fireflies",      color: "from-amber-400 to-lime-300" },
+  { name: "aurora",        label: "Aurora",         color: "from-emerald-500 to-teal-400" },
 ];
 
 export default function Routines() {
