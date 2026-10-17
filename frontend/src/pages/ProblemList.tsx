@@ -5,33 +5,9 @@ import { RatingDisplay } from "@/components/RatingStars";
 import { fmtSendRate, fmtRelative } from "@/lib/format";
 import { api } from "@/api";
 import type { SortKey } from "@/api";
+import { RATING_OPTIONS, ASCENT_OPTIONS, SORTS, applyProblemFilters } from "@/lib/problemFilters";
 
 const GRADE_OPTIONS = ["V0","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","V11","V12"];
-
-const RATING_OPTIONS: { key: string; label: string; test: (r: number | null) => boolean }[] = [
-  { key: "0",   label: "0 ★",   test: (r) => r == null || r === 0 },
-  { key: "1",   label: "≥ 1 ★", test: (r) => r != null && r >= 1 },
-  { key: "2",   label: "≥ 2 ★", test: (r) => r != null && r >= 2 },
-  { key: "3",   label: "≥ 3 ★", test: (r) => r != null && r >= 3 },
-];
-
-const ASCENT_OPTIONS: { key: string; label: string; test: (a: number) => boolean }[] = [
-  { key: "0",    label: "0",      test: (a) => a === 0 },
-  { key: "gt0",  label: "> 0",    test: (a) => a > 0 },
-  { key: "gte5", label: "≥ 5",    test: (a) => a >= 5 },
-  { key: "gte10",label: "≥ 10",   test: (a) => a >= 10 },
-  { key: "gte25",label: "≥ 25",   test: (a) => a >= 25 },
-  { key: "gte50",label: "≥ 50",   test: (a) => a >= 50 },
-  { key: "gte100",label: "≥ 100", test: (a) => a >= 100 },
-];
-
-const SORTS: { value: SortKey; label: string }[] = [
-  { value: "created_desc", label: "Newest" },
-  { value: "created_asc", label: "Oldest" },
-  { value: "rating_desc", label: "Top rated" },
-  { value: "ascents_desc", label: "Most ascents" },
-  { value: "send_rate_desc", label: "Highest send rate" },
-];
 
 function GradeCheckboxDropdown({
   selected,
@@ -300,28 +276,13 @@ export default function ProblemList() {
   }
 
   useEffect(() => {
-    const ratingTests = RATING_OPTIONS.filter((o) => selectedRatings.has(o.key));
-    const ascentTests = ASCENT_OPTIONS.filter((o) => selectedAscents.has(o.key));
-    const byFav = favoritesOnly ? problems.filter((p) => favIds.has(p.id)) : problems;
-    const byRating = ratingTests.length === 0
-      ? byFav
-      : byFav.filter((p) => ratingTests.some((o) => o.test(p.rating_avg)));
-    const computed = ascentTests.length === 0
-      ? byRating
-      : byRating.filter((p) => ascentTests.some((o) => o.test(p.ascents ?? 0)));
-    setVisibleProblems(computed);
+    setVisibleProblems(
+      applyProblemFilters(problems, selectedRatings, selectedAscents, favoritesOnly, favIds),
+    );
   }, [ratingsKey, ascentsKey, favoritesOnly, problems, favIds]);
 
   const setters = ["ALL", ...Array.from(new Set(problems.map((p) => p.setter ?? "").filter(Boolean)))];
-  const activeRatingTests = RATING_OPTIONS.filter((o) => selectedRatings.has(o.key));
-  const activeAscentTests = ASCENT_OPTIONS.filter((o) => selectedAscents.has(o.key));
-  const byFav = favoritesOnly ? problems.filter((p) => favIds.has(p.id)) : problems;
-  const byRating = activeRatingTests.length === 0
-    ? byFav
-    : byFav.filter((p) => activeRatingTests.some((o) => o.test(p.rating_avg)));
-  const visible = activeAscentTests.length === 0
-    ? byRating
-    : byRating.filter((p) => activeAscentTests.some((o) => o.test(p.ascents ?? 0)));
+  const visible = applyProblemFilters(problems, selectedRatings, selectedAscents, favoritesOnly, favIds);
 
   async function handleLoad(id: number, e: React.MouseEvent) {
     e.stopPropagation();
@@ -403,7 +364,7 @@ export default function ProblemList() {
         {visible.map((p) => (
           <div
             key={p.id}
-            onClick={() => navigate(`/problems/${p.id}`)}
+            onClick={() => navigate({ pathname: `/problems/${p.id}`, search: searchParams.toString() })}
             className="bg-slate-900 border border-slate-800 rounded-lg p-4 cursor-pointer hover:border-slate-600 transition-colors"
           >
             <div className="flex items-start justify-between mb-2">

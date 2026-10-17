@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useProblemStore } from "@/store/useProblemStore";
 import { BoardGrid } from "@/components/BoardGrid";
 import { ColorPicker } from "@/components/ColorPicker";
 import { api } from "@/api";
-import type { Led } from "@/api";
+import type { Led, Problem, SortKey } from "@/api";
 import { ActivityPanel } from "@/components/ActivityPanel";
 import { RatingDisplay } from "@/components/RatingStars";
 import { fmtSendRate } from "@/lib/format";
 import { canEdit } from "@/lib/perms";
 import { useAuth } from "@/store/useAuth";
+import { applyProblemFilters } from "@/lib/problemFilters";
 
 const GRADES = ["V0","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10","V11","V12"];
 
@@ -19,6 +20,17 @@ export default function ProblemEditor() {
   const { current, loading, fetchProblem, updateProblem, addLed, updateLed, deleteLed, loadToBoard, clearBoard, deleteProblem } =
     useProblemStore();
   const { user } = useAuth();
+
+  const [searchParams] = useSearchParams();
+  const gradesKey = searchParams.get("grades") ?? "";
+  const ratingsKey = searchParams.get("ratings") ?? "";
+  const ascentsKey = searchParams.get("ascents") ?? "";
+  const setter = searchParams.get("setter") ?? "ALL";
+  const sort = (searchParams.get("sort") ?? "created_desc") as SortKey;
+  const favoritesOnly = searchParams.get("fav") === "1";
+  const selectedRatings = useMemo(() => new Set(ratingsKey ? ratingsKey.split(",") : []), [ratingsKey]);
+  const selectedAscents = useMemo(() => new Set(ascentsKey ? ascentsKey.split(",") : []), [ascentsKey]);
+  const [list, setList] = useState<Problem[]>([]);
 
   const [selectedColor, setSelectedColor] = useState("blue");
   const [editMode, setEditMode] = useState(false);
@@ -41,6 +53,26 @@ export default function ProblemEditor() {
       if (c) setCols(Number(c));
     });
   }, [id]);
+
+  // Rebuild the filtered + sorted list the user came from, straight from the URL
+  // params, so prev/next survives refresh and deep links.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [items, favs] = await Promise.all([
+        api.problems.list({
+          grades: gradesKey || undefined,
+          setter: setter !== "ALL" ? setter : undefined,
+          sort,
+        }),
+        api.favorites.list("problem"),
+      ]);
+      if (cancelled) return;
+      const favIds = new Set(favs.filter((f) => f.problem_id != null).map((f) => f.problem_id!));
+      setList(applyProblemFilters(items, selectedRatings, selectedAscents, favoritesOnly, favIds));
+    })();
+    return () => { cancelled = true; };
+  }, [gradesKey, ratingsKey, ascentsKey, setter, sort, favoritesOnly]);
 
   useEffect(() => {
     if (current) {
@@ -98,6 +130,14 @@ export default function ProblemEditor() {
   const canModify = canEdit(user, current.created_by);
   const liveEdit = canModify && editMode;
 
+  const idx = list.findIndex((p) => p.id === Number(id));
+  const prev = idx > 0 ? list[idx - 1] : null;
+  const next = idx >= 0 && idx < list.length - 1 ? list[idx + 1] : null;
+
+  function go(targetId: number) {
+    navigate({ pathname: `/problems/${targetId}`, search: searchParams.toString() });
+  }
+
   function toggleEditMode() {
     setEditMode((on) => {
       if (on) setEditing(false);
@@ -130,6 +170,26 @@ export default function ProblemEditor() {
       {/* Sidebar */}
       <div className={`w-64 border-l border-slate-800 bg-slate-900 flex-col gap-5 p-5 overflow-y-auto ${sidebarOpen ? "fixed inset-y-0 right-0 z-40 flex" : "hidden lg:flex"}`}>
         <button className="lg:hidden self-end text-slate-500 hover:text-slate-300 text-xl leading-none mb-1" onClick={() => setSidebarOpen(false)}>✕</button>
+
+        {list.length > 1 && idx >= 0 && (
+          <div className="flex items-center justify-between gap-2">
+            <button
+              onClick={() => prev && go(prev.id)}
+              disabled={!prev}
+              className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm transition-colors disabled:opacity-40"
+            >
+              ‹ Prev
+            </button>
+            <span className="text-xs text-slate-500 whitespace-nowrap">{idx + 1} of {list.length}</span>
+            <button
+              onClick={() => next && go(next.id)}
+              disabled={!next}
+              className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm transition-colors disabled:opacity-40"
+            >
+              Next ›
+            </button>
+          </div>
+        )}
 
         {/* Problem meta */}
         <div>
