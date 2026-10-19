@@ -13,6 +13,9 @@ export default function Settings() {
   const [updateMsg, setUpdateMsg] = useState("");
   const [updateStatus, setUpdateStatus] = useState<"idle" | "ok" | "error">("idle");
   const [commit, setCommit] = useState("");
+  const [currentBranch, setCurrentBranch] = useState("");
+  const [branches, setBranches] = useState<string[]>([]);
+  const [branch, setBranch] = useState("");
 
   // User management (admin only)
   const [users, setUsers] = useState<User[]>([]);
@@ -29,7 +32,12 @@ export default function Settings() {
     });
     fetch("/api/system/version")
       .then((r) => r.json())
-      .then((d) => setCommit(d.commit));
+      .then((d) => {
+        setCommit(d.commit);
+        setCurrentBranch(d.branch ?? "");
+        setBranches(d.branches ?? []);
+        setBranch(d.branch || d.branches?.[0] || "");
+      });
 
     if (currentUser?.is_admin) {
       api.auth.listUsers().then(setUsers);
@@ -46,12 +54,20 @@ export default function Settings() {
   }
 
   async function handleUpdate() {
-    if (!confirm("Pull latest code and restart the service?")) return;
+    const switching = branch !== "" && branch !== currentBranch;
+    const prompt = switching
+      ? `Switch from ${currentBranch || "the current branch"} to ${branch}, pull, and restart the service?`
+      : `Pull latest ${branch || "code"} and restart the service?`;
+    if (!confirm(prompt)) return;
     setUpdating(true);
     setUpdateStatus("idle");
     setUpdateMsg("Fetching latest code…");
     try {
-      const res = await fetch("/api/system/update", { method: "POST" });
+      const res = await fetch("/api/system/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ branch: branch || null }),
+      });
       const data = await res.json();
       if (data.status === "ok") {
         setUpdateStatus("ok");
@@ -279,15 +295,35 @@ export default function Settings() {
       <div>
         <h2 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-4">System</h2>
         {commit && (
-          <p className="text-xs text-slate-600 mb-4">Current commit: <code className="text-slate-500">{commit}</code></p>
+          <p className="text-xs text-slate-600 mb-4">
+            Current commit: <code className="text-slate-500">{commit}</code>
+            {currentBranch && <> on <code className="text-slate-500">{currentBranch}</code></>}
+          </p>
         )}
-        <button
-          onClick={handleUpdate}
-          disabled={updating}
-          className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm font-medium transition-colors disabled:opacity-50"
-        >
-          {updating ? "Updating…" : "Pull & Restart"}
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          {branches.length > 0 && (
+            <label className="flex items-center gap-2 text-xs text-slate-500">
+              Branch
+              <select
+                value={branch}
+                onChange={(e) => setBranch(e.target.value)}
+                disabled={updating}
+                className="bg-slate-800 border border-slate-700 text-slate-200 rounded px-3 py-2 text-sm disabled:opacity-50"
+              >
+                {branches.map((b) => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          <button
+            onClick={handleUpdate}
+            disabled={updating}
+            className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {updating ? "Updating…" : "Pull & Restart"}
+          </button>
+        </div>
         {updateMsg && (
           <p className={`text-xs mt-3 ${
             updateStatus === "ok" ? "text-green-500" :
