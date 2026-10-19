@@ -1,9 +1,9 @@
 """
-LED strip controller for NeoPixel on Raspberry Pi 5.
+LED strip controller for NeoPixel on Raspberry Pi Zero / Zero 2 W.
 
-Uses adafruit-circuitpython-neopixel via SPI (GPIO10) which works reliably
-on Pi5's RP1 GPIO chip. Falls back to simulate mode on non-Pi hardware or
-when LED_SIMULATE=1 is set.
+Uses adafruit-circuitpython-neopixel, which on pre-Pi 5 boards drives the strip
+through rpi_ws281x (PWM on GPIO18 by default). Needs root. Falls back to
+simulate mode on non-Pi hardware or when LED_SIMULATE=1 is set.
 """
 
 import os
@@ -32,10 +32,13 @@ COLORS: dict[str, tuple[int, int, int]] = {
 
 SIMULATE = os.getenv("LED_SIMULATE", "0") == "1"
 
-# Data pin, as a Blinka board name (D13 = GPIO13 = physical pin 33). GPIO10/MOSI
-# (pin 19) stopped driving the strip, so the default moved to D13. Override
-# with LED_PIN in the service environment if the wiring changes again.
-LED_PIN = os.getenv("LED_PIN", "D13")
+# Data pin, as a Blinka board name. D18 = GPIO18 = physical pin 12 (PWM0).
+# Blinka on pre-Pi 5 boards only drives NeoPixels from D10 (SPI MOSI, pin 19),
+# D12 (pin 32), D18 (pin 12) or D21 (PCM, pin 40). The Pi 5 build of this app
+# used D13, which is not on that list. Override with LED_PIN in the service
+# environment if the wiring changes. PWM pins need onboard audio disabled
+# (dtparam=audio=off).
+LED_PIN = os.getenv("LED_PIN", "D18")
 
 _strip = None
 # Serializes anything that talks to the strip hardware: the animation threads and

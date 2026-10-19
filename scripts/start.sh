@@ -22,8 +22,11 @@ cd "$APP_DIR" || exit 1
 # Install/upgrade dependencies. Non-fatal on purpose: if the board is offline,
 # pip will fail and we still boot with whatever is already installed rather than
 # leaving the service dead (this box may have no SSH for recovery).
+# --only-binary=:all: because a Pi Zero (512 MB, one slow core) cannot build the
+# Rust packages (pydantic-core, bcrypt) from source. With no matching wheel pip
+# fails fast and we boot with what is installed instead of grinding on every boot.
 if [ -f "$VENV/bin/pip" ]; then
-  "$VENV/bin/pip" install -q -r requirements.txt \
+  "$VENV/bin/pip" install -q --only-binary=:all: -r requirements.txt \
     || echo "start.sh: dependency install skipped or failed (offline?); booting with existing packages"
 fi
 

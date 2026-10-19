@@ -1,11 +1,14 @@
 fastapi>=0.111.0
-uvicorn[standard]>=0.29.0
+# Plain uvicorn on purpose: [standard] pulls in uvloop, httptools and watchfiles,
+# which are compiled and have no ARMv6 (Pi Zero W) wheels. h11 is fine for this app.
+uvicorn>=0.29.0
 sqlalchemy>=2.0.0
 alembic>=1.13.0
 pydantic>=2.0.0
-python-jose[cryptography]>=3.3.0
+# No [cryptography] extra: the app only signs HS256 tokens, which python-jose
+# handles with hmac and its pure-Python backend.
+python-jose>=3.3.0
 bcrypt>=4.0.0
 python-multipart>=0.0.9
-# On Pi5 only — comment out for local dev on Mac:
-# adafruit-circuitpython-neopixel
-# adafruit-blinka
+# LED drivers are installed by hand on the Pi (see README), not listed here:
+#   rpi_ws281x adafruit-circuitpython-neopixel adafruit-blinka
