@@ -116,6 +116,11 @@ export default function Settings() {
   const [exporting, setExporting] = useState<"" | "content" | "db">("");
   const [exportErr, setExportErr] = useState("");
 
+  // Import
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState("");
+  const [importErr, setImportErr] = useState("");
+
   async function handleExportContent() {
     setExportErr("");
     setExporting("content");
@@ -137,6 +142,26 @@ export default function Settings() {
       setExportErr(e instanceof Error ? e.message : "Backup failed");
     } finally {
       setExporting("");
+    }
+  }
+
+  async function handleImportFile(file: File) {
+    setImportErr("");
+    setImportResult("");
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const res = await api.backup.import(data);
+      const parts: string[] = [];
+      if (res.problems) parts.push(`${res.problems} problems`);
+      if (res.routes) parts.push(`${res.routes} routes`);
+      if (res.sessions) parts.push(`${res.sessions} sessions`);
+      setImportResult(`Imported ${parts.join(", ")}.`);
+    } catch (e) {
+      setImportErr(e instanceof Error ? e.message : "Import failed");
+    } finally {
+      setImporting(false);
     }
   }
 
@@ -263,11 +288,14 @@ export default function Settings() {
       )}
 
       <div className="mb-8">
-        <h2 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-2">Backup &amp; Export</h2>
-        <p className="text-xs text-slate-600 mb-4">
+        <h2 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-2">Data</h2>
+
+        {/* Export */}
+        <p className="text-xs text-slate-500 uppercase tracking-wider mt-4 mb-2">Export</p>
+        <p className="text-xs text-slate-600 mb-3">
           {currentUser?.is_admin
-            ? "Export problems, routes & workouts as JSON, or download a full database snapshot."
-            : "Export your problems, routes & workouts as JSON so you don't lose them."}
+            ? "Download problems, routes & workouts as JSON, or get a full database snapshot."
+            : "Download your problems, routes & workouts as JSON so you don't lose them."}
         </p>
         <div className="flex flex-wrap gap-3">
           <button
@@ -288,6 +316,30 @@ export default function Settings() {
           )}
         </div>
         {exportErr && <p className="text-red-400 text-xs mt-3">{exportErr}</p>}
+
+        {/* Import */}
+        <p className="text-xs text-slate-500 uppercase tracking-wider mt-5 mb-2">Import</p>
+        <p className="text-xs text-slate-600 mb-3">
+          Restore problems, routes &amp; workouts from a previously-exported JSON file.
+          Imported content is assigned to your account.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50">
+            {importing ? "Importing…" : "Import JSON"}
+            <input
+              type="file"
+              accept=".json"
+              disabled={importing}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImportFile(file);
+              }}
+              className="hidden"
+            />
+          </label>
+        </div>
+        {importResult && <p className="text-green-500 text-xs mt-3">{importResult}</p>}
+        {importErr && <p className="text-red-400 text-xs mt-3">{importErr}</p>}
       </div>
 
       <hr className="border-slate-800 mb-8" />
