@@ -324,7 +324,9 @@ export default function Settings() {
           Imported content is assigned to your account.
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-sm font-medium transition-colors cursor-pointer disabled:opacity-50">
+          <label
+            className={`px-5 py-2 bg-slate-800 text-slate-200 rounded text-sm font-medium transition-colors ${importing ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-700 cursor-pointer"}`}
+          >
             {importing ? "Importing…" : "Import JSON"}
             <input
               type="file"
@@ -333,6 +335,7 @@ export default function Settings() {
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleImportFile(file);
+                e.target.value = "";
               }}
               className="hidden"
             />
