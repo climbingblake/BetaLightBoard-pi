@@ -336,6 +336,8 @@ export const api = {
     // Return the raw Response so the caller can stream a file download.
     database: () => fetch(`${BASE}/backup/database`, { credentials: "include" }),
     content:  () => fetch(`${BASE}/backup/content`,  { credentials: "include" }),
+    import:   (body: object) =>
+      req<{ problems: number; routes: number; sessions: number }>("POST", "/backup/import", body),
   },
 };
 
