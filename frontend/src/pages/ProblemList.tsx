@@ -369,7 +369,7 @@ export default function ProblemList() {
             className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden cursor-pointer hover:border-slate-600 transition-colors"
           >
             {/* LED board thumbnail — rendered from leds already in memory, no extra requests */}
-            <div className="border-b border-slate-800">
+            <div className="border-b border-slate-800 h-12">
               <LedThumbnail leds={p.leds} />
             </div>
             <div className="p-4">
