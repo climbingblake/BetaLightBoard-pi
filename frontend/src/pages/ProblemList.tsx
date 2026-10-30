@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useProblemStore } from "@/store/useProblemStore";
 import { RatingDisplay } from "@/components/RatingStars";
+import { LedThumbnail } from "@/components/LedThumbnail";
 import { fmtSendRate, fmtRelative } from "@/lib/format";
 import { api } from "@/api";
 import type { SortKey } from "@/api";
@@ -365,45 +366,51 @@ export default function ProblemList() {
           <div
             key={p.id}
             onClick={() => navigate({ pathname: `/problems/${p.id}`, search: searchParams.toString() })}
-            className="bg-slate-900 border border-slate-800 rounded-lg p-4 cursor-pointer hover:border-slate-600 transition-colors"
+            className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden cursor-pointer hover:border-slate-600 transition-colors"
           >
-            <div className="flex items-start justify-between mb-2">
-              <span className="text-slate-100 font-medium truncate">{p.name || "Untitled"}</span>
-              <div className="flex items-center gap-1.5 ml-2 shrink-0">
-                {p.grade && (
-                  <span className="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded">
-                    {p.grade}
-                  </span>
-                )}
+            {/* LED board thumbnail — rendered from leds already in memory, no extra requests */}
+            <div className="border-b border-slate-800">
+              <LedThumbnail leds={p.leds} />
+            </div>
+            <div className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <span className="text-slate-100 font-medium truncate">{p.name || "Untitled"}</span>
+                <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                  {p.grade && (
+                    <span className="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded">
+                      {p.grade}
+                    </span>
+                  )}
+                  <button
+                    onClick={(e) => toggleFav(p.id, e)}
+                    className={`text-sm leading-none transition-colors ${favIds.has(p.id) ? "text-yellow-400" : "text-slate-600 hover:text-slate-400"}`}
+                  >
+                    {favIds.has(p.id) ? "★" : "☆"}
+                  </button>
+                </div>
+              </div>
+              {p.setter && (
+                <p className="text-xs text-slate-500 mb-1">by {p.setter}</p>
+              )}
+              <div className="mb-2">
+                <RatingDisplay avg={p.rating_avg} count={p.rating_count} />
+              </div>
+              <div className="flex items-center gap-2 text-xs text-slate-600 mb-3 flex-wrap">
+                <span>{p.leds.length} holds</span>
+                <span>·</span>
+                <span>{p.ascents} ascents</span>
+                <span>·</span>
+                <span title="send rate">{fmtSendRate(p.send_rate)}</span>
+                {p.updated_at && (<><span>·</span><span>{fmtRelative(p.updated_at)}</span></>)}
+              </div>
+              <div className="flex gap-2">
                 <button
-                  onClick={(e) => toggleFav(p.id, e)}
-                  className={`text-sm leading-none transition-colors ${favIds.has(p.id) ? "text-yellow-400" : "text-slate-600 hover:text-slate-400"}`}
+                  onClick={(e) => handleLoad(p.id, e)}
+                  className="flex-1 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors"
                 >
-                  {favIds.has(p.id) ? "★" : "☆"}
+                  Load
                 </button>
               </div>
-            </div>
-            {p.setter && (
-              <p className="text-xs text-slate-500 mb-1">by {p.setter}</p>
-            )}
-            <div className="mb-2">
-              <RatingDisplay avg={p.rating_avg} count={p.rating_count} />
-            </div>
-            <div className="flex items-center gap-2 text-xs text-slate-600 mb-3 flex-wrap">
-              <span>{p.leds.length} holds</span>
-              <span>·</span>
-              <span>{p.ascents} ascents</span>
-              <span>·</span>
-              <span title="send rate">{fmtSendRate(p.send_rate)}</span>
-              {p.updated_at && (<><span>·</span><span>{fmtRelative(p.updated_at)}</span></>)}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={(e) => handleLoad(p.id, e)}
-                className="flex-1 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors"
-              >
-                Load
-              </button>
             </div>
           </div>
         ))}
