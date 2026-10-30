@@ -10,9 +10,8 @@ interface Props {
 
 /**
  * Scaled-down SVG representation of the LED board.
- * Parent controls display size via the wrapper div height; SVG fills it and
- * preserves aspect ratio. Zero server impact — renders from the leds already
- * on the Problem object.
+ * Uses a fixed viewBox so the parent controls display size via CSS.
+ * Zero server impact — renders from the leds already on the Problem object.
  */
 export function LedThumbnail({ leds, rows = 10, cols = 20 }: Props) {
   const cell = 5;
@@ -24,12 +23,12 @@ export function LedThumbnail({ leds, rows = 10, cols = 20 }: Props) {
     <svg
       viewBox={`0 0 ${vw} ${vh}`}
       width="100%"
-      height="100%"
-      preserveAspectRatio="xMidYMid meet"
-      style={{ display: "block" }}
+      style={{ display: "block", aspectRatio: `${vw} / ${vh}` }}
       xmlns="http://www.w3.org/2000/svg"
     >
+      {/* Board background */}
       <rect width={vw} height={vh} fill="#0f172a" rx={2} />
+      {/* Lit holds */}
       {leds.map((l) => (
         <rect
           key={`${l.row},${l.col}`}
