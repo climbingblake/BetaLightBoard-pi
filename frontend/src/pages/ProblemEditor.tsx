@@ -43,7 +43,6 @@ export default function ProblemEditor() {
   const [rows, setRows] = useState(10);
   const [cols, setCols] = useState(10);
   const [autoLoad, setAutoLoad] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (id && id !== "new") fetchProblem(Number(id));
@@ -152,13 +151,9 @@ export default function ProblemEditor() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-49px)]">
-      {/* Board */}
-      <div className="flex-1 relative flex items-center justify-center bg-slate-950 overflow-hidden">
-        <button
-          className="lg:hidden absolute top-3 right-3 z-10 p-2 bg-slate-800/80 rounded text-slate-300 hover:text-slate-100 text-lg leading-none"
-          onClick={() => setSidebarOpen(true)}
-        >☰</button>
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-49px)]">
+      {/* Board — order-2 on mobile (below sidebar), order-1 on desktop (left) */}
+      <div className="flex-1 relative flex items-center justify-center bg-slate-950 overflow-hidden order-2 lg:order-1">
         <BoardGrid
           rows={rows}
           cols={cols}
@@ -169,13 +164,8 @@ export default function ProblemEditor() {
         />
       </div>
 
-      {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-30 bg-black/60" onClick={() => setSidebarOpen(false)} />
-      )}
-
-      {/* Sidebar */}
-      <div className={`w-64 border-l border-slate-800 bg-slate-900 flex-col gap-5 p-5 overflow-y-auto ${sidebarOpen ? "fixed inset-y-0 right-0 z-40 flex" : "hidden lg:flex"}`}>
-        <button className="lg:hidden self-end text-slate-500 hover:text-slate-300 text-xl leading-none mb-1" onClick={() => setSidebarOpen(false)}>✕</button>
+      {/* Sidebar — order-1 on mobile (top), order-2 on desktop (right); always visible */}
+      <div className="flex flex-col gap-4 p-4 overflow-y-auto bg-slate-900 border-slate-800 order-1 lg:order-2 w-full max-h-48 border-b lg:w-64 lg:max-h-none lg:border-b-0 lg:border-l lg:gap-5 lg:p-5">
 
         {list.length > 1 && idx >= 0 && (
           <div className="flex items-center justify-between gap-2">
