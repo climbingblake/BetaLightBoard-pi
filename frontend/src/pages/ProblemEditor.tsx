@@ -43,8 +43,6 @@ export default function ProblemEditor() {
   const [rows, setRows] = useState(10);
   const [cols, setCols] = useState(10);
   const [autoLoad, setAutoLoad] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   useEffect(() => {
     if (id && id !== "new") fetchProblem(Number(id));
     api.settings.list().then((settings) => {
@@ -152,30 +150,12 @@ export default function ProblemEditor() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-49px)]">
-      {/* Board */}
-      <div className="flex-1 relative flex items-center justify-center bg-slate-950 overflow-hidden">
-        <button
-          className="lg:hidden absolute top-3 right-3 z-10 p-2 bg-slate-800/80 rounded text-slate-300 hover:text-slate-100 text-lg leading-none"
-          onClick={() => setSidebarOpen(true)}
-        >☰</button>
-        <BoardGrid
-          rows={rows}
-          cols={cols}
-          leds={current.leds}
-          selectedColor={selectedColor}
-          onCellClick={handleCellClick}
-          readOnly={!liveEdit}
-        />
-      </div>
+    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-49px)]">
 
-      {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-30 bg-black/60" onClick={() => setSidebarOpen(false)} />
-      )}
-
-      {/* Sidebar */}
-      <div className={`w-64 border-l border-slate-800 bg-slate-900 flex-col gap-5 p-5 overflow-y-auto ${sidebarOpen ? "fixed inset-y-0 right-0 z-40 flex" : "hidden lg:flex"}`}>
-        <button className="lg:hidden self-end text-slate-500 hover:text-slate-300 text-xl leading-none mb-1" onClick={() => setSidebarOpen(false)}>✕</button>
+      {/* ── Sidebar ──────────────────────────────────────────────────────────
+           Mobile: full-width block above the board (normal page flow, scrolls).
+           Desktop: fixed-height right column, unchanged from before.          */}
+      <aside className="flex flex-col gap-5 p-5 overflow-y-auto bg-slate-900 border-b border-slate-800 lg:order-2 lg:w-64 lg:border-b-0 lg:border-l lg:overflow-y-auto">
 
         {list.length > 1 && idx >= 0 && (
           <div className="flex items-center justify-between gap-2">
@@ -297,8 +277,8 @@ export default function ProblemEditor() {
                 <p className="text-xs text-slate-500 mt-2 whitespace-pre-line">{current.description}</p>
               )}
             </div>
-
           )}
+
           <div className="mt-2">
             <RatingDisplay avg={current.rating_avg} count={current.rating_count} />
           </div>
@@ -315,15 +295,29 @@ export default function ProblemEditor() {
             >
               Load to Board
             </button>
-
             {status && (
               <p className="text-xs text-green-500 text-center">{status}</p>
             )}
-
             <ActivityPanel problemId={current.id} onActivity={() => fetchProblem(current.id)} />
           </>
         )}
+      </aside>
+
+      {/* ── Board ────────────────────────────────────────────────────────────
+           Mobile: sits below the sidebar in normal page flow.
+           min-h-[50vw] keeps it usable on narrow screens (≈2:1 board ratio).
+           Desktop: flex-1 fills remaining viewport height on the left.        */}
+      <div className="flex-1 min-h-[50vw] lg:min-h-0 flex items-center justify-center bg-slate-950 overflow-hidden lg:order-1">
+        <BoardGrid
+          rows={rows}
+          cols={cols}
+          leds={current.leds}
+          selectedColor={selectedColor}
+          onCellClick={handleCellClick}
+          readOnly={!liveEdit}
+        />
       </div>
+
     </div>
   );
 }
